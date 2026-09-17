@@ -1,0 +1,17 @@
+/target
+**/target
+Cargo.lock
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local env / secrets
+.env
+*.local

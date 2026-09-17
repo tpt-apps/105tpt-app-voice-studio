@@ -1,0 +1,1055 @@
+TPT App Voice Studio
+
+1. Product Definition
+
+Product name: TPT Voice Studio
+Repository: tpt-app-voice-studio
+Product family: TPT Apps
+Category: Transcript-driven professional audio editing and voice production
+Primary distribution: Offline desktop application
+Secondary interfaces: CLI for batch transcription and export automation
+Target platforms: Windows first; Linux second; macOS only when the underlying TPT voice/audio stack is sufficiently mature
+
+1.1 Executive summary
+
+TPT Voice Studio is a native, offline-first application for editing spoken-word audio by editing its transcript.
+
+The core interaction is simple:
+
+Speaker 1:
+"We launched the product in June."
+
+Speaker 2:
+"Actually, July."
+
+Delete the sentence in the transcript.
+The underlying audio edit happens automatically.
+
+The application transcribes, diarises, and forcibly aligns recorded speech to word-level timing, then treats the resulting transcript as an editable, non-destructive representation of the audio itself. Removing, reordering, or selecting text produces a corresponding edit against the source recording, which can be reviewed, undone, and exported without ever modifying the original file.
+
+The application should be substantially more useful than a Whisper GUI and substantially more approachable than a full DAW. Its core value proposition is:
+
+Edit spoken-word recordings as fast as editing a document, without losing audio precision or professional control.
+
+Target use cases include podcast and interview production, documentary and journalism editing, e-learning narration cleanup, and legal/corporate transcription and review — but the product's centre of gravity, and its MVP focus, is podcast and interview production, where the "edit by transcript" workflow delivers the clearest, fastest win.
+
+The product should process audio entirely on the user's machine by default. No upload to TPT infrastructure or a third-party transcription API is required.
+
+2. Commercial Objective
+
+The initial product should target professional and semi-professional audio producers who currently lose significant time to manual, waveform-based editing of spoken-word content.
+
+Primary customer profiles:
+
+Podcast producers and editors
+
+Interview and documentary producers
+
+Journalists and investigative reporters working with recorded interviews
+
+E-learning and corporate training video producers
+
+Legal transcription and review teams
+
+Corporate video and internal-communications teams
+
+Independent audio/video content creators moving into professional workflows
+
+The product should be positioned as professional production software rather than a transcription utility or a consumer note-taking app.
+
+2.1 Initial pricing hypothesis
+
+Pricing is a commercial hypothesis and must be validated before launch.
+
+Suggested initial structure:
+
+Edition
+
+Indicative price
+
+Intended buyer
+
+Standard
+
+$299
+
+Individual podcaster/creator moving to a professional workflow
+
+Professional
+
+$699
+
+Working audio editor, journalist, or documentary producer
+
+Studio
+
+$1,499
+
+Production team, multi-seat facility, or agency
+
+Avoid recurring cloud infrastructure and subscription costs in the initial product. A perpetual licence should be supported. Optional paid major-version upgrades can be introduced later.
+
+2.2 Competitive positioning
+
+Transcript-based audio/video editing is an established idea. Products such as Descript popularised "edit the transcript, edit the media," and Adobe's text-based editing features and various cloud transcription services (Otter.ai and similar) address adjacent parts of the same workflow. Traditional DAWs (Reaper, Audacity, Pro Tools) remain waveform-first and require a separate transcription step bolted on via plugins or external services.
+
+TPT should therefore not attempt to win merely by re-implementing "transcript editing." The differentiators should be:
+
+Native Rust implementation with fast, responsive transcription and alignment on commodity hardware.
+
+Offline-first operation — no mandatory cloud transcription service, no account, no per-minute API billing passed on to the customer.
+
+No subscription requirement — perpetual licence as the default commercial model, a direct contrast to subscription-based competitors.
+
+A unified engine combining diarisation, forced alignment, isolation/denoise, and loudness normalization in one deterministic local pipeline, rather than stitching together separate services.
+
+Explicit, visible transcription confidence rather than silently trusting automatic speech recognition output.
+
+Multi-track/multi-mic session support suited to professional interview and podcast setups, not just single-file uploads.
+
+A CLI and batch mode suited to production teams processing many episodes/recordings, not just a single-file web app.
+
+3. Product Principles
+
+3.1 Offline first
+
+All core transcription, alignment, and editing functionality must work without internet access.
+
+The application must not require:
+
+cloud transcription APIs
+
+cloud storage
+
+remote rendering
+
+account creation
+
+telemetry
+
+cloud licensing checks
+
+Internet connectivity may optionally be used for:
+
+software updates
+
+licence activation
+
+downloading optional language/acoustic models
+
+The user must be able to disable these features and still transcribe, edit, and export.
+
+3.2 Transcript and audio are bound by alignment
+
+The transcript is not a separate, detachable artefact. Every word in the transcript carries a timestamp range and a link back to the exact audio samples it represents, established through forced alignment.
+
+This binding is what makes "edit the transcript, edit the audio" possible, and it must remain accurate after every edit operation.
+
+3.3 Non-destructive editing
+
+Editing the transcript must never modify the original recording file.
+
+Every edit operation (delete, reorder, trim, mute) is recorded as a step in an edit-decision-list (EDL) that is applied against the source audio only at playback and export time.
+
+Original recording
+        |
+        v
+   Edit-decision-list  <-- transcript edits recorded here
+        |
+        v
+  Rendered preview / export
+
+This allows every edit to be undone, and allows the same source recording to support multiple divergent edits (e.g. a long-form and short-form cut).
+
+3.4 Explainable transcription confidence
+
+Automatic transcription is probabilistic. The application must never present a transcribed word as verified fact.
+
+Every word must carry a confidence value, and low-confidence words must be visually distinguished in the transcript so an editor knows exactly where to double-check the automatic output before relying on it — this matters especially for the legal/corporate transcription vertical, where a misheard word can matter a great deal.
+
+3.5 Do not silently apply cleanup
+
+Filler-word removal, silence trimming, and noise reduction must be presented as reviewable suggestions or adjustable operations, not automatically and irreversibly baked into the audio without the editor's visibility.
+
+3.6 Engine and presentation are separate
+
+The transcription, alignment, and editing engine must be usable without the desktop GUI, so that studios can batch-process many recordings from the CLI.
+
+Architecture:
+
+                  Voice Studio Application
+                          |
+             +------------+-------------+
+             |                          |
+          Desktop                    CLI/Batch
+             |                          |
+             +------------+-------------+
+                          |
+                   Voice Studio Engine
+                          |
+        +------------------+------------------+
+        |                  |                  |
+   Transcription      Alignment/          Edit/Export
+   + Diarisation       Speaker            (EDL, cleanup,
+                        Model              rendering)
+
+4. Proposed Repository Structure
+
+tpt-app-voice-studio/
+├── Cargo.toml
+├── README.md
+├── LICENSE
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── docs/
+│   ├── architecture.md
+│   ├── transcript-model.md
+│   ├── edit-model.md
+│   ├── alignment.md
+│   ├── export-formats.md
+│   └── accuracy.md
+├── crates/
+│   ├── tpt-app-voice-studio-core/
+│   ├── tpt-app-voice-studio-model/
+│   ├── tpt-app-voice-studio-transcribe/
+│   ├── tpt-app-voice-studio-align/
+│   ├── tpt-app-voice-studio-edit/
+│   ├── tpt-app-voice-studio-cleanup/
+│   ├── tpt-app-voice-studio-export/
+│   ├── tpt-app-voice-studio-cli/
+│   ├── tpt-app-voice-studio-tauri/
+│   └── tpt-app-voice-studio-test/
+├── fixtures/
+│   ├── single-speaker/
+│   ├── multi-speaker/
+│   ├── noisy/
+│   ├── multi-track/
+│   └── accents/
+└── tests/
+    ├── integration/
+    ├── golden/
+    └── round-trip/
+
+The exact workspace split can be simplified if the project is initially small. The important architectural boundary is between the deterministic transcript/edit engine and the application shell.
+
+5. Foundation Dependencies
+
+The application should reuse TPT foundations rather than duplicate speech, signal, or codec functionality.
+
+5.1 Primary dependencies
+
+tpt-voice
+
+Primary speech engine and the reason this product can be built quickly on top of the existing TPT stack.
+
+Responsibilities:
+
+transcription (batch, file-based)
+
+streaming transcription (used for live preview during import, not a live-recording MVP feature)
+
+speaker diarisation/segmentation
+
+forced alignment (word-level timestamps against the transcript)
+
+voice isolation
+
+text-to-speech (present in the crate, explicitly out of MVP scope for this product — see section 19)
+
+This crate is the primary reason Voice Studio is not "another Whisper GUI": diarisation, alignment, and isolation are already part of the same foundation used elsewhere in the TPT AV stack.
+
+tpt-audio / tpt-dsp
+
+Signal-level foundation supporting cleanup and detection features.
+
+Responsibilities:
+
+waveform-level editing primitives underneath the transcript-driven edit model
+
+noise/denoise processing
+
+silence and breath/filler detection support
+
+loudness/level measurement and normalization
+
+tpt-dsp's real-time-safe, allocation-free design supports responsive waveform preview and live cleanup parameter adjustment without UI stutter.
+
+tpt-cadence
+
+Audio codec foundation.
+
+Responsibilities:
+
+decoding imported audio (WAV, MP3, AAC, FLAC, and other formats supported by the TPT media stack)
+
+encoding exported audio
+
+codec-level metadata needed for accurate timing
+
+tpt-av-asset
+
+Project and job infrastructure.
+
+Responsibilities:
+
+project persistence
+
+background transcription/alignment jobs so large recordings do not block the UI
+
+waveform caching
+
+resumable processing for long recordings
+
+filesystem watching for batch/watch-folder style ingestion in later phases
+
+tpt-av-test
+
+Testing/conformance foundation.
+
+Responsibilities:
+
+golden audio/transcript fixtures
+
+deterministic regression tests for alignment and diarisation
+
+fuzzing harnesses reused from the other TPT Apps
+
+The commercial application must add product-level transcript-editing and export logic on top of this foundation rather than duplicating speech or signal processing that already exists in these crates.
+
+6. Core Domain Model
+
+6.1 Project
+
+struct Project {
+    id: ProjectId,
+    name: String,
+    recordings: Vec<RecordingId>,
+    transcript: Transcript,
+    edit_history: Vec<EditOperation>,
+    speakers: Vec<Speaker>,
+}
+
+6.2 Recording
+
+struct Recording {
+    id: RecordingId,
+    path: PathBuf,
+    fingerprint: RecordingFingerprint,
+    track_role: TrackRole,
+    duration: Duration,
+    sample_rate: u32,
+    channels: u16,
+}
+
+enum TrackRole {
+    Mixed,
+    SingleSpeakerIsolated(SpeakerId),
+    Reference,
+}
+
+A project may hold multiple recordings representing separate microphone tracks of the same session (multi-track podcast/interview recording).
+
+6.3 Transcript
+
+struct Transcript {
+    segments: Vec<Segment>,
+}
+
+struct Segment {
+    id: SegmentId,
+    speaker: Option<SpeakerId>,
+    words: Vec<Word>,
+}
+
+struct Word {
+    text: String,
+    start: Duration,
+    end: Duration,
+    confidence: f32,
+    source_recording: RecordingId,
+}
+
+6.4 Speaker
+
+struct Speaker {
+    id: SpeakerId,
+    label: String,
+    recordings: Vec<RecordingId>,
+}
+
+6.5 Edit Operation
+
+enum EditOperation {
+    DeleteRange { segment: SegmentId, word_range: Range<usize> },
+    Reorder { segment: SegmentId, new_position: usize },
+    Trim { recording: RecordingId, range: TimeRange },
+    Mute { recording: RecordingId, range: TimeRange },
+    SelectTake { segment: SegmentId, recording: RecordingId },
+}
+
+Every edit operation is appended to an ordered, reversible edit history rather than mutating source audio.
+
+6.6 Export Job
+
+struct ExportJob {
+    id: ExportJobId,
+    project: ProjectId,
+    format: ExportFormat,
+    range: Option<TimeRange>,
+    status: ExportStatus,
+}
+
+enum ExportFormat {
+    Audio(AudioCodec),
+    Subtitles(SubtitleFormat),
+    Transcript(TranscriptFormat),
+}
+
+7. Transcription and Alignment Pipeline
+
+Import
+  |
+  v
+Decode (Cadence)
+  |
+  v
+Diarisation (tpt-voice)
+  |
+  v
+Transcription (tpt-voice)
+  |
+  v
+Forced alignment (tpt-voice)
+  |
+  v
+Confidence scoring per word
+  |
+  v
+Editable transcript
+
+7.1 Confidence surfacing
+
+Every word carries a confidence score. The editor UI must visually distinguish:
+
+High confidence — rendered normally
+
+Medium confidence — subtly flagged
+
+Low confidence — clearly flagged, inviting manual correction
+
+Confidence must never be discarded after transcription; it should remain attached to the word for the life of the project so an editor can filter or search for "words needing review" at any point, not only immediately after import.
+
+7.2 Multi-track alignment
+
+When a project contains multiple microphone tracks for the same session, alignment must reconcile timing across tracks so that a transcript edit correctly maps back to the correct source recording and sample range for each speaker, even when tracks were not perfectly time-synchronised at capture (using tpt-av-sync-style timing correlation where available).
+
+8. Transcript-Based Editing Model
+
+The core interaction:
+
+Read the transcript like a document.
+Select text.
+Delete it — the corresponding audio is removed from the edit-decision-list.
+Reorder it — the corresponding audio is reordered.
+Play it back — hear the edited result immediately, non-destructively.
+
+Editing operations:
+
+delete selected words/sentences
+
+reorder selected segments
+
+trim leading/trailing silence
+
+mute a range without deleting it (useful for redactions)
+
+select between alternate takes of the same line, when multiple recordings contain repeated deliveries of similar content
+
+8.1 Filler word and silence review
+
+The application should detect, but not silently remove:
+
+filler words ("um", "uh", "like", configurable per language)
+
+long silences
+
+breaths (optional, since some genres want natural breath retained)
+
+These are presented in a review panel as one-click-removable suggestions, letting the editor accept individually, accept all, or ignore.
+
+Example:
+
+Detected fillers (14)
+─────────────────────
+00:01:12   "um"        [Remove] [Keep]
+00:03:47   "you know"  [Remove] [Keep]
+00:07:02   "uh"        [Remove] [Keep]
+
+Remove All Detected
+
+8.2 Multi-take selection
+
+Where a speaker records multiple attempts at the same line (common in podcast/interview re-takes and narration), the editor should be able to see aligned alternate takes and choose which one appears in the final edit without losing the others.
+
+Take 1: "So the key thing here is—actually let me restart that."
+Take 2: "So the key thing here is timing."           [Selected]
+
+9. Speaker and Multi-Track Handling
+
+Diarisation assigns speaker labels automatically; the editor can rename/merge/split speakers when diarisation is imperfect.
+
+Speaker view:
+
+Speaker 1 (Host)     ████████░░████████████░░████
+Speaker 2 (Guest)    ░░░░░░░░████░░░░░░░░████░░░░
+
+Per-speaker cleanup (isolation, denoise, level normalization) can be applied independently, which matters when a multi-mic session has inconsistent recording quality between participants.
+
+10. Cleanup and Enhancement Tools
+
+Provided as explicit, adjustable, reviewable operations rather than a single "make it sound good" black box:
+
+voice isolation (remove background noise/room tone while preserving the primary voice)
+
+denoise (parametric, with before/after preview)
+
+loudness normalization (target LUFS, consistent with the loudness-handling approach used in the QC spec)
+
+silence trimming (configurable threshold and minimum retained gap)
+
+Every cleanup operation must support an audible before/after comparison before being committed to the edit history.
+
+11. Export Pipeline
+
+Formats:
+
+Audio — WAV, MP3, AAC, FLAC (via tpt-cadence), rendered from the edit-decision-list
+
+Clips/highlights — selected transcript ranges exported as standalone audio files
+
+Subtitles/captions — SRT/VTT generated directly from the aligned, edited transcript
+
+Transcript — plain text, timestamped, speaker-labeled, in a format suitable for delivery to a client or for legal/corporate record-keeping
+
+Example transcript export:
+
+[00:00:12] Host: Welcome back to the show.
+[00:00:15] Guest: Thanks for having me.
+
+Because subtitle and transcript exports are derived from the same aligned data used for editing, they remain in sync with the final edited audio without a separate manual re-timing pass.
+
+12. Desktop UI
+
+Use a native Tauri application.
+
+The UI should have these primary screens.
+
+12.1 Transcript Editor (primary screen)
+
+The transcript is the main editing surface; the waveform is a secondary, supporting view beneath it.
+
+TRANSCRIPT                                    WAVEFORM
+──────────────────────────────────────────    ────────────
+Host: Welcome back to the show.                ▂▃▅▇▅▃▂
+Guest: Thanks for having [um] having me.        ▃▅▇▇▅▃▁
+Host: Let's get into it.                        ▂▄▆▅▃▂▁
+
+Clicking a word jumps playback to that position. Selecting a text range highlights the corresponding waveform range and vice versa.
+
+12.2 Speaker Track View
+
+Shows per-speaker segments across the session timeline, useful for multi-track sessions.
+
+12.3 Filler/Silence Review Panel
+
+As shown in section 8.1, with batch accept/reject controls.
+
+12.4 Cleanup Panel
+
+Per-recording or per-speaker controls for isolation, denoise, and normalization, with before/after preview.
+
+12.5 Export Panel
+
+Format selection, range selection, and job progress, backed by the same export engine used by the CLI.
+
+12.6 Project/Asset Browser
+
+Recordings, project list, recent edits, and processing job status (transcription/alignment jobs running in the background).
+
+13. CLI and Automation Interface
+
+The CLI should be first-class, enabling studio-scale batch processing.
+
+Example:
+
+tpt-voice-studio transcribe \
+  --input episode-042.wav \
+  --output episode-042.json
+
+Batch:
+
+tpt-voice-studio batch-transcribe \
+  --input ./recordings \
+  --output ./transcripts
+
+Export:
+
+tpt-voice-studio export \
+  --project episode-042.tptproj \
+  --format audio \
+  --output episode-042-final.wav
+
+Machine-readable result:
+
+{
+  "status": "success",
+  "project": "episode-042",
+  "words_transcribed": 8421,
+  "average_confidence": 0.94
+}
+
+Exit codes:
+
+0 = SUCCESS
+1 = PARTIAL_SUCCESS
+2 = TRANSCRIPTION_FAILED
+3 = ALIGNMENT_FAILED
+4 = EXPORT_FAILED
+5 = CONFIGURATION_ERROR
+6 = INPUT_ERROR
+7 = INTERNAL_ERROR
+
+The exit-code contract must remain stable.
+
+14. Local API
+
+The desktop application may expose an optional localhost-only API for integration with other local tools.
+
+Default:
+
+127.0.0.1
+
+Never bind externally by default.
+
+Potential endpoints:
+
+POST /projects/:id/transcribe
+GET  /projects/:id/transcript
+POST /projects/:id/export
+GET  /jobs/:id
+GET  /health
+
+The API should be disabled by default unless explicitly enabled.
+
+15. Persistence
+
+Use SQLite for local application state.
+
+Store:
+
+projects
+
+recordings (paths and fingerprints, not raw audio)
+
+transcripts
+
+edit history
+
+speaker registry
+
+export job metadata
+
+user preferences
+
+Do not store original or rendered audio inside the application database. Store paths, fingerprints, and cached derived data (waveforms, alignment data) separately.
+
+Original recordings must never be modified in place; edits are recorded exclusively in the edit-decision-list.
+
+16. Security and Privacy
+
+The application processes potentially confidential spoken-word recordings, including legal and corporate material.
+
+Requirements:
+
+no mandatory network access
+
+no cloud transcription upload
+
+no external telemetry of audio or transcript content
+
+safe handling of malformed/corrupt audio files
+
+strict path validation
+
+safe temporary-file handling
+
+no automatic external asset fetching
+
+Audio and container parsers must be fuzz tested, consistent with the approach used in the other TPT Apps.
+
+17. Accuracy and Confidence Handling
+
+17.1 No silent overconfidence
+
+The application must never present automatically transcribed text as a verified verbatim record without qualifying it with confidence information.
+
+17.2 Review workflow
+
+The transcript editor must support filtering to "low-confidence words only," so a legal or corporate reviewer can efficiently audit exactly the portions of a transcript that need human verification rather than re-reading the entire document.
+
+17.3 Explicit disclaimers on export
+
+Transcript exports intended for formal or legal use should include, where the user opts in:
+
+This transcript was generated using automated speech recognition and forced alignment. It has not been independently verified for verbatim accuracy unless explicitly marked as reviewed.
+
+This protects the product from overclaiming accuracy it cannot guarantee, consistent with the caution applied around perceptual/probabilistic results in the QC and Forensics specs.
+
+18. Testing Strategy
+
+18.1 Unit tests
+
+Every pipeline stage (decode, diarisation, transcription, alignment, edit application, export) must have:
+
+valid input
+
+invalid input
+
+boundary case
+
+malformed input
+
+expected result
+
+18.2 Golden audio/transcript tests
+
+Maintain a controlled fixture set:
+
+fixtures/
+├── single-speaker/
+├── multi-speaker/
+├── noisy/
+├── multi-track/
+└── accents/
+
+Each fixture must have an expected transcript, expected speaker segmentation, and expected alignment tolerance.
+
+18.3 Round-trip tests
+
+Transcript edit → edit-decision-list → rendered audio → re-imported and re-aligned must remain consistent within defined tolerance. This is the equivalent of the QC spec's reproducibility guarantee, applied to the edit pipeline instead of a QC verdict.
+
+18.4 Property tests
+
+Useful for:
+
+timestamp/word-range mapping
+
+edit-decision-list ordering and application
+
+subtitle timing generation
+
+confidence aggregation
+
+18.5 Fuzzing
+
+Fuzz:
+
+audio container/codec parsing
+
+transcript import/export parsers
+
+project file parsing
+
+CLI arguments
+
+Reuse tpt-av-test where possible.
+
+18.6 Regression tests
+
+Every production bug should produce a permanent regression fixture.
+
+19. MVP
+
+The first commercial MVP should not implement every possible voice-production feature.
+
+MVP scope:
+
+Ingestion
+
+single-file import
+
+multi-track/multi-mic session import
+
+drag-and-drop
+
+Transcription and alignment
+
+transcription
+
+speaker diarisation
+
+forced alignment
+
+per-word confidence scoring
+
+Editing
+
+transcript-based delete/reorder editing
+
+non-destructive edit-decision-list
+
+filler-word and silence detection with manual review
+
+multi-take selection
+
+Cleanup
+
+voice isolation
+
+denoise
+
+loudness normalization
+
+silence trimming
+
+Export
+
+audio export (WAV/MP3/AAC/FLAC)
+
+clip/highlight export
+
+SRT/VTT subtitle export
+
+timestamped, speaker-labeled transcript export
+
+UX
+
+transcript-first editor with linked waveform
+
+speaker track view
+
+filler/silence review panel
+
+cleanup panel with before/after preview
+
+export panel
+
+Automation
+
+CLI transcription and export
+
+batch transcription
+
+Explicitly out of MVP scope: text-to-speech, automatic multi-language translation, real-time streaming transcription of live recording, collaboration/review workflows, plugin SDK.
+
+This is enough to deliver the core "edit audio by editing the transcript" workflow end to end for the podcast/interview vertical while remaining directly usable, with only minor workflow differences, by documentary, journalism, e-learning, and legal/corporate transcription users.
+
+20. Post-MVP
+
+Phase 2:
+
+text-to-speech for gap-filling and guide narration (using tpt-voice's TTS capability, previously excluded from MVP)
+
+multi-language transcription/alignment support
+
+live/streaming transcription during recording (rather than only post-recording import)
+
+richer subtitle styling/templating
+
+watch-folder batch ingestion
+
+Phase 3:
+
+collaboration/review workflows (reviewer comments, approval status per segment)
+
+plugin SDK for custom cleanup/export operations
+
+vertical-specific templates: legal verbatim mode, e-learning chaptering/module export, documentary rough-cut assembly from transcript selections across many source recordings
+
+Cloud infrastructure should not be introduced unless customers demonstrate a real need.
+
+21. Product Differentiation Roadmap
+
+Level 1 — Transcription
+
+"Can I get an accurate, fast, offline transcript of this recording?"
+
+Level 2 — Transcript-Driven Editing
+
+"Can I edit the audio by editing the transcript?"
+
+Level 3 — Multi-Track Production
+
+"Can I manage a real multi-mic session, not just a single file?"
+
+Level 4 — Trustworthy Output
+
+"Can I trust and verify exactly which parts of the transcript need review?"
+
+Level 5 — Workflow Integration
+
+"Can this plug into my broader production pipeline via CLI/API rather than being an island?"
+
+The final levels are important for the professional, higher-ticket positioning against consumer transcription apps.
+
+22. Commercial Product Packaging
+
+Standard
+
+single-track projects
+
+full transcript-based editing
+
+cleanup tools
+
+export formats
+
+CLI
+
+one-machine licence
+
+Professional
+
+multi-track/multi-mic sessions
+
+batch CLI transcription
+
+priority updates
+
+Studio
+
+multiple local machines
+
+team project sharing (local network/file-based, not cloud-hosted)
+
+advanced export templating
+
+commercial support
+
+Do not build Studio-tier collaboration features until there is evidence customers need them.
+
+23. Strategic Product Boundary
+
+Do not turn this into:
+
+a full multitrack DAW
+
+a video editor
+
+a live-captioning/streaming service
+
+a cloud transcription API product
+
+It may play, trim, and rearrange audio because that is necessary for transcript-based editing. But the product's centre of gravity must remain:
+
+Transcribe
+Align
+Edit by transcript
+Clean up
+Export
+
+24. Definition of Done
+
+The first release is ready for paid users when:
+
+A user can install the application without development tooling.
+
+A user can import a single-file or multi-track recording.
+
+The application can transcribe, diarise, and forcibly align the recording offline.
+
+Every transcribed word carries a visible confidence indicator.
+
+Deleting or reordering transcript text produces a corresponding non-destructive audio edit.
+
+Filler words and silences are detected and presented for manual review, not auto-removed.
+
+Multi-take selection works when alternate takes exist in the source recordings.
+
+Voice isolation, denoise, and loudness normalization are available with before/after preview.
+
+Audio, clip, subtitle, and transcript exports all work and remain in sync with the final edited transcript.
+
+The CLI can transcribe and export using the same engine as the GUI.
+
+Batch transcription of multiple files works from the CLI.
+
+A corrupt or malformed audio file cannot crash the application.
+
+Golden audio/transcript tests cover single-speaker, multi-speaker, noisy, and multi-track fixtures.
+
+Round-trip tests confirm transcript edits reproduce consistent rendered audio.
+
+Fuzz testing covers audio/container parsers and project file parsing.
+
+No internet connection is required for core operation.
+
+A clean-machine installation has been tested.
+
+Performance has been benchmarked against representative long-form (60+ minute) multi-track recordings.
+
+25. Recommended Implementation Order
+
+Establish Cargo workspace and application shell.
+
+Integrate tpt-cadence and enumerate supported import/export formats.
+
+Integrate tpt-voice for transcription and diarisation.
+
+Implement the transcript/word/speaker domain model.
+
+Implement forced alignment integration and per-word confidence scoring.
+
+Implement the non-destructive edit-decision-list model.
+
+Implement transcript-based delete/reorder editing against the EDL.
+
+Implement filler-word and silence detection.
+
+Implement multi-take detection/selection.
+
+Integrate tpt-audio/tpt-dsp for isolation, denoise, and normalization.
+
+Implement SQLite persistence for projects, transcripts, and edit history.
+
+Implement background job handling via tpt-av-asset for long transcription/alignment jobs.
+
+Implement audio, clip, subtitle, and transcript export.
+
+Implement the CLI (transcribe, batch-transcribe, export).
+
+Implement the desktop transcript editor UI with linked waveform.
+
+Implement the speaker track view.
+
+Implement the filler/silence review panel.
+
+Implement the cleanup panel with before/after preview.
+
+Implement the export panel.
+
+Add golden audio/transcript test suite across fixture categories.
+
+Add round-trip edit/export tests.
+
+Add fuzzing for audio and project parsers.
+
+Benchmark and profile against long-form multi-track recordings.
+
+Harden error handling and failure isolation.
+
+Package Windows release.
+
+Run a private beta with real podcast/interview producers.
+
+Only then expand into Phase 2 (TTS, multi-language, live transcription).
+
+26. Strategic Constraint
+
+Do not attempt to match every feature of Descript or a full DAW on version 1.
+
+Those products have years of workflow polish, cloud infrastructure, and (in Descript's case) a large existing user base built around a subscription model. TPT's first advantage should instead be:
+
+A fast, offline, no-subscription, transcript-driven audio editor built on a professional-grade native speech and signal-processing foundation, with visible transcription confidence and a CLI suited to production-scale batch work.
+
+Then use the open TPT voice/audio foundation to expand into multi-language support, live transcription, and deeper production-team workflows. The commercial application should be the place where transcription, alignment, and audio editing become one coherent, trustworthy professional product.

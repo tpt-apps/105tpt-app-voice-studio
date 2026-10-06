@@ -1,0 +1,16 @@
+[package]
+name = "tpt-app-voice-studio-edit"
+description = "Non-destructive transcript-driven editing engine (edit-decision-list) for TPT Voice Studio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tpt-app-voice-studio-core.workspace = true
+tpt-app-voice-studio-model.workspace = true
+
+[lints]
+workspace = true

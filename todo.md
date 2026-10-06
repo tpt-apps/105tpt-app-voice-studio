@@ -7,31 +7,32 @@ License: dual **MIT OR Apache-2.0**.
 
 ## Phase 0: Project Setup & Foundation
 
-- [ ] Verify foundation crates are reachable from this workspace (path dependency or registry): `tpt-voice` (transcription/diarisation/alignment/isolation), `tpt-audio`/`tpt-dsp` (denoise/normalization/silence detection), `tpt-cadence` (codecs), `tpt-av-asset` (project/job persistence), `tpt-av-test` (fixtures/conformance) — spec §5
-  - Note: at time of writing, `tpt-cadence` is not yet a resolvable workspace dependency from sibling repos (see `tpt-voice/todo.md`); confirm current status before wiring real `Cargo.toml` paths and flag as a dependency risk if still unresolved.
-- [ ] Initialize git repository, add `.gitignore` (Rust/Cargo template)
-- [ ] Create Cargo workspace `Cargo.toml` (members per spec §4: `-core`, `-model`, `-transcribe`, `-align`, `-edit`, `-cleanup`, `-export`, `-cli`, `-tauri`, `-test`)
-- [ ] Create `LICENSE-MIT` and `LICENSE-APACHE` (dual license, copyright TPT Solutions)
-- [ ] Set `license = "MIT OR Apache-2.0"` in workspace `Cargo.toml`
-- [ ] Create `deny.toml` (cargo-deny license/advisory enforcement)
-- [ ] Scaffold `tpt-app-voice-studio-core` crate
-- [ ] Scaffold `tpt-app-voice-studio-model` crate (domain model per spec §6)
-- [ ] Scaffold `tpt-app-voice-studio-transcribe` crate
-- [ ] Scaffold `tpt-app-voice-studio-align` crate
-- [ ] Scaffold `tpt-app-voice-studio-edit` crate
-- [ ] Scaffold `tpt-app-voice-studio-cleanup` crate
-- [ ] Scaffold `tpt-app-voice-studio-export` crate
-- [ ] Scaffold `tpt-app-voice-studio-cli` crate
-- [ ] Scaffold `tpt-app-voice-studio-tauri` crate
-- [ ] Scaffold `tpt-app-voice-studio-test` crate
-- [ ] Create `README.md` (project overview, positioning, quickstart)
-- [ ] Create `CONTRIBUTING.md`
-- [ ] Create `CHANGELOG.md`
-- [ ] Create `docs/` skeleton: `architecture.md`, `transcript-model.md`, `edit-model.md`, `alignment.md`, `export-formats.md`, `accuracy.md`
-- [ ] Set up CI (GitHub Actions): build, test, clippy, fmt check
-- [ ] Add `cargo-deny check` to CI
-- [ ] Scaffold `fixtures/` directories: `single-speaker/`, `multi-speaker/`, `noisy/`, `multi-track/`, `accents/` — spec §18.2
-- [ ] Scaffold `tests/` directories: `integration/`, `golden/`, `round-trip/`
+- [x] Verify foundation crates are reachable from this workspace (path dependency or registry): `tpt-voice` (transcription/diarisation/alignment/isolation), `tpt-audio`/`tpt-dsp` (denoise/normalization/silence detection), `tpt-cadence` (codecs), `tpt-av-asset` (project/job persistence), `tpt-av-test` (fixtures/conformance) — spec §5
+  - Status 2026-10-07: `tpt-cadence`, `tpt-audio` (`tpt-av-audio*` members), `tpt-av-asset`, and `tpt-av-test` all exist as sibling workspaces and are path-wired in the root `Cargo.toml` (entries only; members switch over in Phase 1). `tpt-cadence` is now resolvable — the earlier concern is resolved.
+  - **Dependency risk (open):** `tpt-voice` (the primary speech engine) does not exist yet anywhere reachable, and `tpt-dsp` exists only as a design doc (`tpt-foundations/17-tpt-dsp.md`). See docs/architecture.md; engine-facing crates stay trait-based until these land.
+- [x] Initialize git repository, add `.gitignore` (Rust/Cargo template)
+- [x] Create Cargo workspace `Cargo.toml` (members per spec §4: `-core`, `-model`, `-transcribe`, `-align`, `-edit`, `-cleanup`, `-export`, `-cli`, `-tauri`, `-test`)
+- [x] Create `LICENSE-MIT` and `LICENSE-APACHE` (dual license, copyright TPT Solutions)
+- [x] Set `license = "MIT OR Apache-2.0"` in workspace `Cargo.toml`
+- [x] Create `deny.toml` (cargo-deny license/advisory enforcement)
+- [x] Scaffold `tpt-app-voice-studio-core` crate
+- [x] Scaffold `tpt-app-voice-studio-model` crate (domain model per spec §6)
+- [x] Scaffold `tpt-app-voice-studio-transcribe` crate
+- [x] Scaffold `tpt-app-voice-studio-align` crate
+- [x] Scaffold `tpt-app-voice-studio-edit` crate
+- [x] Scaffold `tpt-app-voice-studio-cleanup` crate
+- [x] Scaffold `tpt-app-voice-studio-export` crate
+- [x] Scaffold `tpt-app-voice-studio-cli` crate
+- [x] Scaffold `tpt-app-voice-studio-tauri` crate
+- [x] Scaffold `tpt-app-voice-studio-test` crate
+- [x] Create `README.md` (project overview, positioning, quickstart)
+- [x] Create `CONTRIBUTING.md`
+- [x] Create `CHANGELOG.md`
+- [x] Create `docs/` skeleton: `architecture.md`, `transcript-model.md`, `edit-model.md`, `alignment.md`, `export-formats.md`, `accuracy.md`
+- [x] Set up CI (GitHub Actions): build, test, clippy, fmt check
+- [x] Add `cargo-deny check` to CI
+- [x] Scaffold `fixtures/` directories: `single-speaker/`, `multi-speaker/`, `noisy/`, `multi-track/`, `accents/` — spec §18.2
+- [x] Scaffold `tests/` directories: `integration/`, `golden/`, `round-trip/`
 
 ---
 

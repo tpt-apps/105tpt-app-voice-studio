@@ -1,0 +1,25 @@
+[package]
+name = "tpt-app-voice-studio-cli"
+description = "Command-line interface for TPT Voice Studio: transcribe, batch-transcribe, export"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "tpt-voice-studio"
+path = "src/main.rs"
+
+[dependencies]
+tpt-app-voice-studio-core.workspace = true
+tpt-app-voice-studio-model.workspace = true
+tpt-app-voice-studio-transcribe.workspace = true
+tpt-app-voice-studio-align.workspace = true
+tpt-app-voice-studio-edit.workspace = true
+tpt-app-voice-studio-cleanup.workspace = true
+tpt-app-voice-studio-export.workspace = true
+
+[lints]
+workspace = true

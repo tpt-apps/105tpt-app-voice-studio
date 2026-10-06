@@ -1,0 +1,74 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/tpt-app-voice-studio-core",
+    "crates/tpt-app-voice-studio-model",
+    "crates/tpt-app-voice-studio-transcribe",
+    "crates/tpt-app-voice-studio-align",
+    "crates/tpt-app-voice-studio-edit",
+    "crates/tpt-app-voice-studio-cleanup",
+    "crates/tpt-app-voice-studio-export",
+    "crates/tpt-app-voice-studio-cli",
+    "crates/tpt-app-voice-studio-tauri",
+    "crates/tpt-app-voice-studio-test",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["TPT Solutions"]
+repository = "https://github.com/tpt-solutions/tpt-app-voice-studio"
+rust-version = "1.75"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+
+[workspace.dependencies]
+# --- Workspace-internal crates ---
+tpt-app-voice-studio-core = { path = "crates/tpt-app-voice-studio-core", version = "0.1.0" }
+tpt-app-voice-studio-model = { path = "crates/tpt-app-voice-studio-model", version = "0.1.0" }
+tpt-app-voice-studio-transcribe = { path = "crates/tpt-app-voice-studio-transcribe", version = "0.1.0" }
+tpt-app-voice-studio-align = { path = "crates/tpt-app-voice-studio-align", version = "0.1.0" }
+tpt-app-voice-studio-edit = { path = "crates/tpt-app-voice-studio-edit", version = "0.1.0" }
+tpt-app-voice-studio-cleanup = { path = "crates/tpt-app-voice-studio-cleanup", version = "0.1.0" }
+tpt-app-voice-studio-export = { path = "crates/tpt-app-voice-studio-export", version = "0.1.0" }
+tpt-app-voice-studio-test = { path = "crates/tpt-app-voice-studio-test", version = "0.1.0" }
+
+# --- TPT foundation crates (sibling workspaces, path-wired) ---
+# Verified present 2026-10-07. Entries are wired here but not yet referenced by
+# any member; Phase 1 integration tasks switch members over to
+# `<dep>.workspace = true` as each pipeline stage lands. See
+# docs/architecture.md ("Foundation dependencies") for the integration strategy
+# and the clean-machine/CI implications of cross-repo path dependencies.
+# Codecs (spec §5.1: import/export of WAV, MP3, AAC, FLAC)
+tpt-av-cadence-core = { path = "../tpt-cadence/tpt-av-cadence-core" }
+tpt-av-cadence-wav = { path = "../tpt-cadence/tpt-av-cadence-wav" }
+tpt-av-cadence-mp3 = { path = "../tpt-cadence/tpt-av-cadence-mp3" }
+tpt-av-cadence-aac = { path = "../tpt-cadence/tpt-av-cadence-aac" }
+tpt-av-cadence-flac = { path = "../tpt-cadence/tpt-av-cadence-flac" }
+# Signal-level foundation (spec §5.1: cleanup and detection support)
+tpt-av-audio = { path = "../tpt-audio/tpt-av-audio" }
+tpt-av-audio-core = { path = "../tpt-audio/tpt-av-audio-core" }
+tpt-av-audio-io = { path = "../tpt-audio/tpt-av-audio-io" }
+# Project/job infrastructure (spec §5.1: persistence, background jobs, caches)
+tpt-av-asset-db = { path = "../tpt-av-asset/tpt-av-asset-db" }
+tpt-av-asset-pipeline = { path = "../tpt-av-asset/tpt-av-asset-pipeline" }
+tpt-av-asset-cache = { path = "../tpt-av-asset/tpt-av-asset-cache" }
+tpt-av-asset-watcher = { path = "../tpt-av-asset/tpt-av-asset-watcher" }
+# Testing/conformance foundation (spec §5.1: golden fixtures, fuzzing)
+tpt-av-test-fuzz = { path = "../tpt-av-test/tpt-av-test-fuzz" }
+tpt-av-test-macros = { path = "../tpt-av-test/tpt-av-test-macros" }
+tpt-av-test-mock = { path = "../tpt-av-test/tpt-av-test-mock" }
+#
+# NOT YET AVAILABLE (dependency risk, spec §5.1) — do not wire until these repos
+# exist and are resolvable:
+#   tpt-voice — speech engine: transcription, diarisation, forced alignment,
+#               voice isolation. Repo does not exist yet.
+#   tpt-dsp   — signal processing: denoise, loudness/level, silence detection.
+#               Design doc only (tpt-foundations/17-tpt-dsp.md).

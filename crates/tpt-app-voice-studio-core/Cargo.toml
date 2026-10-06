@@ -1,0 +1,14 @@
+[package]
+name = "tpt-app-voice-studio-core"
+description = "Shared primitives for TPT Voice Studio: identifiers, time ranges, confidence tiers, error types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+
+[lints]
+workspace = true

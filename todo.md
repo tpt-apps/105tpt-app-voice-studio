@@ -82,6 +82,7 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 
 ### Persistence & Background Jobs
 - [ ] Implement SQLite persistence for projects, transcripts, and edit history — spec §25 step 11, §15
+  - Progress: portable project files implemented (`model::project_file`, versioned JSON envelope around the full project incl. the EDL — the `.tptproj` the spec §13 CLI references; round-trip and version-rejection tested). Remaining: the SQLite *library* store (project list, preferences, job metadata) — blocked on the SQLite-vs-`tpt-av-asset-db` foundation decision (the existing foundation uses redb, not SQLite).
 - [ ] Implement background job handling via `tpt-av-asset` for long transcription/alignment jobs — spec §25 step 12
 - [ ] Waveform caching and resumable processing for long recordings — spec §5.1 (`tpt-av-asset`)
 
@@ -95,8 +96,9 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 
 ### CLI
 - [ ] Implement CLI: `transcribe`, `batch-transcribe`, `export` — spec §25 step 14, §13
-- [ ] Implement stable exit-code contract (0–7) — spec §13
-- [ ] Machine-readable (JSON) result output — spec §13
+  - Progress: `tpt-voice-studio` binary with clap interface. `export` is end-to-end functional for SRT/VTT/text/JSON from `.tptproj` project files (replays the saved edit history through the EDL engine). `transcribe`/`batch-transcribe` are wired with the correct contract exit codes and explicit messages, awaiting `tpt-voice`.
+- [x] Implement stable exit-code contract (0–7) — spec §13
+- [x] Machine-readable (JSON) result output — spec §13
 
 ### Desktop UI
 - [ ] Implement desktop transcript editor UI with linked waveform — spec §25 step 15, §12.1

@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 use tpt_app_voice_studio_core::id::{RecordingId, SpeakerId};
 
 /// A participant of a session and the recordings they appear in (spec §6.4).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Speaker {
     /// Unique id of this speaker within the project.
     pub id: SpeakerId,

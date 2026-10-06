@@ -24,6 +24,7 @@
 pub mod edit_operation;
 pub mod export;
 pub mod project;
+pub mod project_file;
 pub mod recording;
 pub mod speaker;
 pub mod transcript;
@@ -33,6 +34,7 @@ pub use export::{
     AudioCodec, ExportFormat, ExportJob, ExportStatus, SubtitleFormat, TranscriptFormat,
 };
 pub use project::Project;
+pub use project_file::{ProjectFile, ProjectFileError, PROJECT_FILE_VERSION};
 pub use recording::{Recording, RecordingFingerprint, TrackRole};
 pub use speaker::Speaker;
 pub use transcript::{Segment, Transcript, Word};

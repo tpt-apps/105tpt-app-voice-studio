@@ -20,7 +20,7 @@ use crate::transcript::{Segment, Transcript};
 ///
 /// `edit_history` is the ordered, reversible edit-decision-list, applied
 /// against source audio only at playback and export time (spec §3.3).
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Project {
     /// Unique id of the project.
     pub id: ProjectId,

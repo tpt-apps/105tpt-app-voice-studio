@@ -14,7 +14,7 @@ use tpt_app_voice_studio_core::id::{RecordingId, SegmentId, SpeakerId};
 use tpt_app_voice_studio_core::time::TimeRange;
 
 /// One aligned, spoken word (spec §6.3).
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Word {
     /// The transcribed text (usually one token; may be multi-word for
     /// detections like a filler phrase "you know").
@@ -42,7 +42,7 @@ impl Word {
 }
 
 /// A run of consecutive words attributed to one speaker (spec §6.3).
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Segment {
     /// Unique id of this segment within the project.
     pub id: SegmentId,
@@ -73,7 +73,7 @@ impl Segment {
 }
 
 /// The full transcript of a project (spec §6.3).
-#[derive(Clone, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug, Default, serde::Serialize, serde::Deserialize)]
 pub struct Transcript {
     /// Segments in playback order.
     pub segments: Vec<Segment>,

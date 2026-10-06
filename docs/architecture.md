@@ -89,3 +89,20 @@ To be documented in Phase 1: background job model via `tpt-av-asset` (spec
 §25 step 12), failure isolation boundaries (spec §25 step 24), and the
 security posture (offline operation, path validation, safe temp files,
 fuzzing targets — spec §16).
+
+## Persistence layers (spec §15) — status
+
+Two distinct stores, per spec:
+
+1. **Project file** (`.tptproj`, implemented in `model::project_file`) — the
+   portable unit of work the spec §13 CLI operates on: a versioned JSON
+   envelope around the full `Project` (recording metadata as paths plus
+   fingerprints, transcript, speakers, and the edit-decision-list). Original
+   audio is never embedded (spec §15). Opening a project replays the saved
+   history through `EditSession::from_history`, which validates every
+   operation — a tampered or mismatched history is rejected, not guessed at.
+2. **SQLite library state** (not started) — project list, user preferences,
+   and export job metadata (spec §15). Open design decision: the spec
+   names SQLite, while the existing foundation crate `tpt-av-asset-db` is
+   built on redb; pick one before wiring the library store. Waveform and
+   alignment caches live outside this database either way (spec §15).

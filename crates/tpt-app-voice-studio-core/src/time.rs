@@ -25,7 +25,9 @@ pub enum TimeRangeError {
 ///
 /// Invariant: `start <= end`. An empty range (`start == end`) is legal and
 /// selects nothing.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, Hash, Debug, Default, serde::Serialize, serde::Deserialize,
+)]
 pub struct TimeRange {
     /// Inclusive start of the range.
     pub start: Duration,

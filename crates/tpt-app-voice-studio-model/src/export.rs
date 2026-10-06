@@ -4,7 +4,7 @@ use tpt_app_voice_studio_core::id::{ExportJobId, ProjectId};
 use tpt_app_voice_studio_core::time::TimeRange;
 
 /// Audio codecs available for export (spec §11, via `tpt-cadence`).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum AudioCodec {
     /// Uncompressed PCM WAV.
     Wav,
@@ -18,7 +18,7 @@ pub enum AudioCodec {
 
 /// Subtitle/caption formats generated from the aligned, edited transcript
 /// (spec §11).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum SubtitleFormat {
     /// SubRip `.srt`.
     Srt,
@@ -27,7 +27,7 @@ pub enum SubtitleFormat {
 }
 
 /// Transcript delivery formats (spec §11, §13).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum TranscriptFormat {
     /// Plain prose paragraphs, suitable for reading.
     PlainText,
@@ -39,7 +39,7 @@ pub enum TranscriptFormat {
 }
 
 /// What kind of deliverable an export job produces (spec §6.6, §11).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ExportFormat {
     /// Audio rendered from the edit-decision-list.
     Audio(AudioCodec),
@@ -50,7 +50,7 @@ pub enum ExportFormat {
 }
 
 /// Lifecycle of an export job (spec §6.6).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum ExportStatus {
     /// Accepted, waiting to render.
     Queued,
@@ -63,7 +63,7 @@ pub enum ExportStatus {
 }
 
 /// One export request for a project (spec §6.6).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExportJob {
     /// Unique id of the job.
     pub id: ExportJobId,

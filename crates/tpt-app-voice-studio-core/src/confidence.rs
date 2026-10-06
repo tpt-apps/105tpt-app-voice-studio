@@ -22,6 +22,19 @@ pub enum ConfidenceTier {
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 pub struct Confidence(f32);
 
+impl serde::Serialize for Confidence {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_f32(self.0)
+    }
+}
+
+impl<'de> serde::Deserialize<'de> for Confidence {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = f32::deserialize(deserializer)?;
+        Confidence::new(value).map_err(serde::de::Error::custom)
+    }
+}
+
 impl Confidence {
     /// A word at or above this score is [`ConfidenceTier::High`].
     pub const HIGH_THRESHOLD: f32 = 0.9;

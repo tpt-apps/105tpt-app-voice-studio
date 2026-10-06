@@ -9,6 +9,9 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
 tpt-app-voice-studio-core.workspace = true
 
 [lints]

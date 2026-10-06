@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Project file persistence (`tpt-app-voice-studio-model::project_file`): the
+  versioned `.tptproj` JSON envelope referenced by the spec §13 CLI — full
+  project including recordings metadata, transcript, speakers, and the EDL;
+  round-trip, version-rejection, and disk I/O tested. Serde added to the
+  core and model types (ids transparent, confidence as a validated number).
+- `EditSession::from_history`: reconstructs an edited working transcript by
+  validating and replaying a saved edit history — the path used by project
+  files, the desktop app, and the CLI alike.
+- CLI (`tpt-voice-studio`, spec §13): `export` is end-to-end functional for
+  SRT/VTT subtitles and plain/timestamped/JSON transcripts from project
+  files, with `--disclaimer` (spec §17.3) and speaker-label options;
+  `transcribe`/`batch-transcribe` are wired with the contract exit codes and
+  explicit unavailable-engine messages until `tpt-voice` is resolvable.
+  `--json` emits the machine-readable result envelope; the exit-code
+  contract (0–7) is enforced and integration-tested against the compiled
+  binary.
 - Reviewable cleanup detection (`tpt-app-voice-studio-edit::detect`,
   spec §8.1, §25 step 8): filler-word detection against configurable
   per-language lists (conservative English default, multi-word phrases,

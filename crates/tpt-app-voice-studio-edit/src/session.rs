@@ -47,6 +47,26 @@ impl EditSession {
         }
     }
 
+    /// Reconstructs a session with a saved edit history (e.g. loaded from a
+    /// project file): every operation is validated and replayed against the
+    /// original transcript.
+    ///
+    /// # Errors
+    /// Returns the first [`EditError`] encountered while validating or
+    /// replaying the history; the history in the file does not match the
+    /// transcript it is applied to.
+    pub fn from_history(
+        recordings: Vec<Recording>,
+        original: Transcript,
+        history: Vec<EditOperation>,
+    ) -> Result<Self, EditError> {
+        let mut session = Self::new(recordings, original);
+        for operation in history {
+            session.apply(operation)?;
+        }
+        Ok(session)
+    }
+
     /// The transcript reflecting every applied (not undone) operation.
     #[must_use]
     pub fn working(&self) -> &Transcript {

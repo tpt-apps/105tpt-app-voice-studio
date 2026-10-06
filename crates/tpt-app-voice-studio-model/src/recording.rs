@@ -13,11 +13,12 @@ use tpt_app_voice_studio_core::id::{RecordingId, SpeakerId};
 /// A content fingerprint of a recording (e.g. a hash of the decoded or raw
 /// bytes), used to detect moved/renamed/changed files without storing audio
 /// in the project database (spec §15).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct RecordingFingerprint(pub u64);
 
 /// The role a recording plays in a project (spec §6.2).
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub enum TrackRole {
     /// A recording of the full session mix (all speakers).
     Mixed,
@@ -29,7 +30,7 @@ pub enum TrackRole {
 }
 
 /// A source recording of a project (spec §6.2).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, serde::Serialize, serde::Deserialize)]
 pub struct Recording {
     /// Unique id of this recording within the project.
     pub id: RecordingId,

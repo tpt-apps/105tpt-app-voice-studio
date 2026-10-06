@@ -11,7 +11,7 @@ use tpt_app_voice_studio_core::id::{RecordingId, SegmentId};
 use tpt_app_voice_studio_core::time::TimeRange;
 
 /// A single reversible, non-destructive edit (spec §6.5).
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize, serde::Deserialize)]
 pub enum EditOperation {
     /// Removes the words in `word_range` (half-open, into the segment's word
     /// list) from playback.

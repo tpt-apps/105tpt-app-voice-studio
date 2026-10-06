@@ -47,11 +47,11 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 - [ ] Drag-and-drop import — spec §19
 
 ### Domain Model
-- [ ] Implement `Project`, `Recording`, `TrackRole` types — spec §6.1–6.2
-- [ ] Implement `Transcript`, `Segment`, `Word` types with confidence field — spec §6.3
-- [ ] Implement `Speaker` type — spec §6.4
-- [ ] Implement `EditOperation` enum (`DeleteRange`, `Reorder`, `Trim`, `Mute`, `SelectTake`) — spec §6.5
-- [ ] Implement `ExportJob`, `ExportFormat` types — spec §6.6
+- [x] Implement `Project`, `Recording`, `TrackRole` types — spec §6.1–6.2
+- [x] Implement `Transcript`, `Segment`, `Word` types with confidence field — spec §6.3
+- [x] Implement `Speaker` type — spec §6.4
+- [x] Implement `EditOperation` enum (`DeleteRange`, `Reorder`, `Trim`, `Mute`, `SelectTake`) — spec §6.5
+- [x] Implement `ExportJob`, `ExportFormat` types — spec §6.6
 
 ### Transcription, Diarisation & Alignment
 - [ ] Integrate `tpt-voice` for transcription and diarisation — spec §25 step 3
@@ -60,8 +60,9 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 - [ ] Multi-track alignment reconciliation across imperfectly synchronised tracks — spec §7.2
 
 ### Non-Destructive Editing
-- [ ] Implement the non-destructive edit-decision-list (EDL) model — spec §25 step 6
-- [ ] Implement transcript-based delete/reorder editing against the EDL — spec §25 step 7
+- [x] Implement the non-destructive edit-decision-list (EDL) model — spec §25 step 6
+- [x] Implement transcript-based delete/reorder editing against the EDL — spec §25 step 7
+  - Engine-level: `tpt-app-voice-studio-edit::EditSession` (validate/apply/undo/redo via history replay) plus the rendered-timeline mapping (`edit::timeline`) used by playback/export. UI surfaces are separate items below.
 - [ ] Implement trim leading/trailing silence operation — spec §8
 - [ ] Implement mute-range-without-deleting operation (redactions) — spec §8
 - [ ] Implement filler-word and silence detection (configurable per language) with manual review — spec §25 step 8, §8.1

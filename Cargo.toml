@@ -26,8 +26,19 @@ unsafe_code = "forbid"
 missing_docs = "warn"
 
 [workspace.lints.clippy]
-all = "warn"
-pedantic = "warn"
+# Lint groups run at a lower priority than the individual lints below, so the
+# targeted allowances can override them.
+all = { level = "warn", priority = -2 }
+pedantic = { level = "warn", priority = -1 }
+# Targeted allowances over `pedantic`: these fire ubiquitously on routine,
+# correct patterns (module-prefixed type names, must-use suggestions,
+# doc-comment prose) and would drown the signal. Re-enable locally where a
+# specific case deserves scrutiny.
+doc_markdown = "allow"
+must_use_candidate = "allow"
+module_name_repetitions = "allow"
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
 
 [workspace.dependencies]
 # --- Workspace-internal crates ---
@@ -39,6 +50,9 @@ tpt-app-voice-studio-edit = { path = "crates/tpt-app-voice-studio-edit", version
 tpt-app-voice-studio-cleanup = { path = "crates/tpt-app-voice-studio-cleanup", version = "0.1.0" }
 tpt-app-voice-studio-export = { path = "crates/tpt-app-voice-studio-export", version = "0.1.0" }
 tpt-app-voice-studio-test = { path = "crates/tpt-app-voice-studio-test", version = "0.1.0" }
+
+# --- Third-party (crates.io) ---
+thiserror = "2"
 
 # --- TPT foundation crates (sibling workspaces, path-wired) ---
 # Verified present 2026-10-07. Entries are wired here but not yet referenced by

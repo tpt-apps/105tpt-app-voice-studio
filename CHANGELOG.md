@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Core primitives (`tpt-app-voice-studio-core`): strongly typed ids
+  (`ProjectId`, `RecordingId`, `SegmentId`, `SpeakerId`, `ExportJobId`),
+  half-open `TimeRange` with validated geometry helpers, `Confidence` with
+  high/medium/low review tiers (spec §7.1), and shared engine error types.
+- Domain model (`tpt-app-voice-studio-model`) per spec §6: `Project`,
+  `Recording`/`TrackRole`/`RecordingFingerprint`, `Transcript`/`Segment`/
+  `Word` (word-level timing + confidence + source-recording binding),
+  `Speaker`, `EditOperation`, and `ExportJob`/`ExportFormat` types, with
+  query helpers and unit tests.
+- Edit engine (`tpt-app-voice-studio-edit`): the non-destructive
+  edit-decision-list (spec §8, §25 steps 6–7). `EditSession` validates and
+  applies `DeleteRange`/`Reorder`/`Trim`/`Mute`/`SelectTake` against the
+  working transcript, with undo/redo computed by history replay so the
+  original alignment binding always survives. `edit::timeline` derives the
+  rendered output timeline (gap-less cut semantics) for playback/export.
 - Cargo workspace with the ten crates from spec §4: `-core`, `-model`,
   `-transcribe`, `-align`, `-edit`, `-cleanup`, `-export`, `-cli`
   (binary `tpt-voice-studio`), `-tauri` (desktop shell placeholder), and

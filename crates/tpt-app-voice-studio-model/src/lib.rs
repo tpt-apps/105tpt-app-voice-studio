@@ -3,8 +3,8 @@
 //! Defines the persistent, engine-level representation of a Voice Studio
 //! project per spec §6:
 //!
-//! - `Project` and `Recording` (§6.1–6.2), including multi-track
-//!   multi-mic sessions via `TrackRole`.
+//! - `Project` and `Recording` (§6.1–6.2), including multi-track multi-mic
+//!   sessions via `TrackRole`.
 //! - `Transcript`, `Segment`, `Word` (§6.3), where every word carries a
 //!   timestamp range, a confidence score, and the source recording it was
 //!   aligned against — the binding that makes "edit the transcript, edit the
@@ -14,18 +14,25 @@
 //!   entries (`DeleteRange`, `Reorder`, `Trim`, `Mute`, `SelectTake`).
 //! - `ExportJob` and `ExportFormat` (§6.6).
 //!
-//! The model is plain data plus invariants. It must not perform I/O, depend on
-//! codecs, or link against the speech engine; pipeline crates own behaviour.
+//! The model is plain data plus invariants and query helpers. It performs no
+//! I/O, depends on no codecs, and links against no speech engine; the
+//! pipeline crates own behaviour (spec §3.6).
 //!
-//! Status: scaffold. The types named above are implemented in Phase 1
-//! (todo.md, "Domain model").
+//! Durations are `std::time::Duration` measured on the recording's own
+//! timeline; ranges are half-open, per [`tpt_app_voice_studio_core::time`].
 
-#[cfg(test)]
-mod tests {
-    /// Placeholder so `cargo test` exercises the crate before real modules
-    /// land in Phase 1. Remove once the crate has genuine coverage.
-    #[test]
-    fn crate_links() {
-        assert_eq!(1 + 1, 2);
-    }
-}
+pub mod edit_operation;
+pub mod export;
+pub mod project;
+pub mod recording;
+pub mod speaker;
+pub mod transcript;
+
+pub use edit_operation::EditOperation;
+pub use export::{
+    AudioCodec, ExportFormat, ExportJob, ExportStatus, SubtitleFormat, TranscriptFormat,
+};
+pub use project::Project;
+pub use recording::{Recording, RecordingFingerprint, TrackRole};
+pub use speaker::Speaker;
+pub use transcript::{Segment, Transcript, Word};

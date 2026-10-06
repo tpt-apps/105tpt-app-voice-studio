@@ -3,28 +3,38 @@
 //! Owns the edit-decision-list (EDL) model and the transcript editing
 //! operations that drive it (spec §8):
 //!
-//! - The ordered, reversible EDL: transcript edits are recorded as
-//!   `EditOperation` entries and applied against source audio only at
-//!   playback and export time — the original recording is never modified
-//!   (spec §3.3, §6.5).
-//! - Delete/reorder of words, sentences, and segments driven directly from
-//!   transcript selections.
-//! - Trim of leading/trailing silence and mute-range-without-deleting
-//!   (redactions).
-//! - Filler-word and silence detection with manual review semantics — detect,
-//!   suggest, never silently apply (spec §3.5, §8.1).
-//! - Multi-take detection and selection between alternate deliveries of the
-//!   same line (spec §8.2).
+//! - [`EditSession`] holds the original aligned transcript plus an ordered,
+//!   reversible history of [`EditOperation`]s (spec §3.3, §6.5). The working
+//!   transcript is always derived by replaying the history against the
+//!   original, so every edit is undoable and the original binding is never
+//!   lost (spec §3.2).
+//! - [`timeline`] derives the rendered (output) timeline from the working
+//!   transcript: the mapping a playback/export renderer uses to cut source
+//!   audio without ever modifying it.
 //!
-//! This crate is pure engine code: deterministic, I/O-free rendering decisions,
-//! usable identically from the desktop UI and the CLI (spec §3.6).
+//! Application policies (deterministic, documented, and covered by tests):
+//!
+//! - **Delete** removes the addressed words; segments emptied by deletion are
+//!   retained (stable identity for undo/history) and simply play no audio.
+//! - **Reorder** moves a segment; the target index is interpreted in the
+//!   segment list after the segment is removed.
+//! - **Trim** cuts a time range from one recording: words fully inside the
+//!   range are removed; partially overlapping words are clamped to the cut
+//!   boundaries and dropped if the clamp empties them; a word spanning the
+//!   whole cut range is kept intact (words are atomic).
+//! - **Mute** records a silenced range for the render/export stage; the
+//!   working transcript is unchanged.
+//! - **SelectTake** records the take choice; the transcript-level swap is
+//!   wired when take alignment lands (spec §8.2, `tpt-voice` integration).
+//!
+//! Rendered timing policy: each kept word occupies its original duration on
+//! the output timeline, concatenated without gaps — deleting a span removes
+//! the audio between its neighbours, as a physical cut would. Deliberate
+//! pause preservation is the job of silence-trim configuration (spec §10).
 
-#[cfg(test)]
-mod tests {
-    /// Placeholder so `cargo test` exercises the crate before real modules
-    /// land in Phase 1. Remove once the crate has genuine coverage.
-    #[test]
-    fn crate_links() {
-        assert_eq!(1 + 1, 2);
-    }
-}
+pub mod error;
+pub mod session;
+pub mod timeline;
+
+pub use error::EditError;
+pub use session::EditSession;

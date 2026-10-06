@@ -8,8 +8,9 @@ License: dual **MIT OR Apache-2.0**.
 ## Phase 0: Project Setup & Foundation
 
 - [x] Verify foundation crates are reachable from this workspace (path dependency or registry): `tpt-voice` (transcription/diarisation/alignment/isolation), `tpt-audio`/`tpt-dsp` (denoise/normalization/silence detection), `tpt-cadence` (codecs), `tpt-av-asset` (project/job persistence), `tpt-av-test` (fixtures/conformance) — spec §5
-  - Status 2026-10-07: `tpt-cadence`, `tpt-audio` (`tpt-av-audio*` members), `tpt-av-asset`, and `tpt-av-test` all exist as sibling workspaces and are path-wired in the root `Cargo.toml` (entries only; members switch over in Phase 1). `tpt-cadence` is now resolvable — the earlier concern is resolved.
-  - **Dependency risk (open):** `tpt-voice` (the primary speech engine) does not exist yet anywhere reachable, and `tpt-dsp` exists only as a design doc (`tpt-foundations/17-tpt-dsp.md`). See docs/architecture.md; engine-facing crates stay trait-based until these land.
+  - Status 2026-10-07 (updated): `tpt-voice`, `tpt-cadence`, `tpt-audio` (and the rest of the AV stack) are public GitHub repos (`github.com/tpt-solutions/*`, branch `master`). The workspace consumes them as **git dependencies** (see root `Cargo.toml`), so CI and clean machines build without sibling checkouts; TPT dev machines can redirect to local workspaces via a `[patch]` section in `~/.cargo/config.toml`.
+  - `tpt-voice` is pure Rust (no native deps) and exposes a `SpeechPipeline` facade (ASR → diarisation → forced alignment) plus per-capability crates — integrated in the transcribe stage.
+  - **Remaining gap:** `tpt-dsp` (parametric denoise, loudness measurement, audio-level silence/breath detection) has no implementation repo yet — design doc only (`tpt-foundations/17-tpt-dsp.md`). Cleanup features ship against what `tpt-audio`/`tpt-voice` provide until then.
 - [x] Initialize git repository, add `.gitignore` (Rust/Cargo template)
 - [x] Create Cargo workspace `Cargo.toml` (members per spec §4: `-core`, `-model`, `-transcribe`, `-align`, `-edit`, `-cleanup`, `-export`, `-cli`, `-tauri`, `-test`)
 - [x] Create `LICENSE-MIT` and `LICENSE-APACHE` (dual license, copyright TPT Solutions)
@@ -41,8 +42,10 @@ License: dual **MIT OR Apache-2.0**.
 Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, following the recommended implementation order in spec §25.
 
 ### Ingestion & Codecs
-- [ ] Integrate `tpt-cadence`; enumerate supported import/export formats (WAV, MP3, AAC, FLAC) — spec §25 step 2
+- [ ] Integrate `tpt-cadence`; enumerate supported import/export formats — spec §25 step 2
+  - Progress: WAV import integrated (`transcribe::decode`) through `tpt-av-cadence-core`/`-wav` as git dependencies, with the format list centralised in `SUPPORTED_IMPORT_FORMATS`. Remaining: MP3/AAC/FLAC decode (crates exist, wiring is mechanical) and encode for export.
 - [ ] Single-file import — spec §19
+  - Progress: engine + CLI level done for WAV (`tpt-voice-studio transcribe --input x.wav --output x.json --model-dir …`). Remaining: multi-format decode and the desktop drag-and-drop path.
 - [ ] Multi-track/multi-mic session import — spec §19
 - [ ] Drag-and-drop import — spec §19
 
@@ -54,7 +57,13 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 - [x] Implement `ExportJob`, `ExportFormat` types — spec §6.6
 
 ### Transcription, Diarisation & Alignment
-- [ ] Integrate `tpt-voice` for transcription and diarisation — spec §25 step 3
+- [x] Integrate `tpt-voice` for transcription and diarisation — spec §25 step 3
+  - `transcribe::engine`: `TranscriptionEngine` port with `TptVoiceEngine` (real engine:
+    `tpt-voice`'s `SpeechPipeline` — ASR, diarisation, word alignment in one pass) and
+    `FakeTranscriptionEngine` (deterministic, model-free). Engine output converts into the
+    domain model with per-word confidence and a synthesised speaker registry (spec §7.1, §9).
+    Real-engine runs need a local ASR model dir (`--model-dir`; `TPT_VOICE_MODEL_DIR` for
+    tests) — models are optional downloads, so the app stays offline-first (spec §3.1).
 - [ ] Implement forced alignment integration and per-word confidence scoring — spec §25 step 5
 - [ ] Confidence surfacing: high/medium/low visual tiers, retained for life of project — spec §7.1
 - [ ] Multi-track alignment reconciliation across imperfectly synchronised tracks — spec §7.2
@@ -96,7 +105,11 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 
 ### CLI
 - [ ] Implement CLI: `transcribe`, `batch-transcribe`, `export` — spec §25 step 14, §13
-  - Progress: `tpt-voice-studio` binary with clap interface. `export` is end-to-end functional for SRT/VTT/text/JSON from `.tptproj` project files (replays the saved edit history through the EDL engine). `transcribe`/`batch-transcribe` are wired with the correct contract exit codes and explicit messages, awaiting `tpt-voice`.
+  - Progress: `export` end-to-end functional for SRT/VTT/text/JSON from `.tptproj` files
+    (replays the saved edit history through the EDL engine). `transcribe` and
+    `batch-transcribe` are **functional** for WAV input with `--model-dir` (real engine;
+    spec §13 result fields `words_transcribed`/`average_confidence`; partial-success
+    semantics for batch). Without a model configured they exit `5` with guidance.
 - [x] Implement stable exit-code contract (0–7) — spec §13
 - [x] Machine-readable (JSON) result output — spec §13
 

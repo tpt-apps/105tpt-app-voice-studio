@@ -61,29 +61,45 @@ alignment caches) is stored outside the SQLite database (spec §15).
 
 ## Foundation dependencies (spec §5.1) — status as of 2026-10-07
 
+The foundations are **public GitHub repos** (`github.com/tpt-solutions/*`,
+branch `master`) consumed as git dependencies — no sibling checkouts needed
+for CI or clean machines.
+
 | Foundation | Provides | Status |
 |---|---|---|
-| `tpt-cadence` | codec import/export (WAV, MP3, AAC, FLAC) | Present as sibling workspace; path entries wired in root `Cargo.toml`; member integration in Phase 1 step 2 |
-| `tpt-audio` | waveform/audio primitives (`tpt-av-audio*`) | Present as sibling workspace; path entries wired; member integration in Phase 1 step 10 |
-| `tpt-av-asset` | persistence, background jobs, waveform cache, watcher | Present as sibling workspace; path entries wired; member integration in Phase 1 steps 11–12 |
-| `tpt-av-test` | fixtures, fuzzing, conformance | Present as sibling workspace; path entries wired; integration in Phase 1 steps 20–22 |
-| `tpt-voice` | transcription, diarisation, forced alignment, voice isolation | **Missing — dependency risk.** Repo does not exist yet anywhere reachable; this is the primary speech engine (spec §5.1). Engine-facing crates (`-transcribe`, `-align`) therefore define trait boundaries; implementations land when the crate exists |
-| `tpt-dsp` | denoise, loudness measurement, silence/breath detection | **Missing — dependency risk.** Design doc only (`tpt-foundations/17-tpt-dsp.md`); `-cleanup` ships against `tpt-audio` primitives in the interim |
+| `tpt-voice` | ASR, diarisation, forced alignment, isolation, TTS — pure Rust, one-crate facade (`SpeechPipeline`) | **Integrated** in the transcribe stage (`transcribe::engine`); real-engine runs need a local ASR model dir (optional download, spec §3.1) |
+| `tpt-cadence` | codec import/export (WAV, MP3, AAC, FLAC) | WAV **decode integrated** (`transcribe::decode`); MP3/AAC/FLAC decode and all encode wired as integrations land |
+| `tpt-audio` | audio engine facade (`tpt-av-audio`: timeline, mixer, I/O, cadence-backed decode) | Available; consumed when cleanup/render integration lands |
+| `tpt-av-asset` | persistence, background jobs, waveform cache, watcher | Available; pending the library-store decision (see Persistence layers below) |
+| `tpt-av-test` | fixtures, fuzzing, conformance | Available; consumed when the golden/fuzz suites land (spec §25 steps 20–22) |
+| `tpt-dsp` | parametric denoise, loudness measurement, audio-level silence/breath detection | **Missing** — design doc only (`tpt-foundations/17-tpt-dsp.md`). Cleanup ships against `tpt-audio`/`tpt-voice` primitives in the interim; the word-gap silence detection in `edit::detect` does not need it |
 
 ### Path-dependency strategy and risks
 
-Foundation crates are wired as **path dependencies into sibling workspaces**
-(`../tpt-cadence/...` etc.) via `[workspace.dependencies]`. This is exact for
-TPT-internal development machines, but:
+Foundation crates are wired as **git dependencies**
+(`git = "https://github.com/tpt-solutions/<repo>", branch = "master"`) in
+`[workspace.dependencies]`. Consequences:
 
-- A clean machine or GitHub Actions runner without the sibling repositories
-  cannot resolve these paths. Members must not reference them until a
-  distribution story exists (vendoring, a private registry, or git
-  dependencies/submodules). Until then, workspace builds carry **zero**
-  foundation dependencies and CI stays green anywhere.
-- Cross-workspace path dependencies create lockstep version coupling; when
-  members start consuming foundations in Phase 1, prefer depending on the
-  narrowest member crates (e.g. `tpt-av-cadence-core`, not the whole codec set).
+- CI and clean machines resolve the repos directly from GitHub; commits are
+  pinned by `Cargo.lock`. Note that `Cargo.lock` is gitignored in this
+  repository, so builds float on `master` until it is committed — revisit
+  that choice when the dependency set stabilises.
+- TPT machines with local sibling workspaces can redirect to them per-machine
+  via a `[patch]` section in `~/.cargo/config.toml`:
+
+  ```toml
+  [patch."https://github.com/tpt-solutions/tpt-cadence"]
+  tpt-av-cadence-core = { path = "C:/path/to/tpt-cadence/tpt-av-cadence-core" }
+  tpt-av-cadence-wav = { path = "C:/path/to/tpt-cadence/tpt-av-cadence-wav" }
+  ```
+
+- Only crates a member actually consumes are wired; add the rest as their
+  integrations land (see the commented list in the root `Cargo.toml`).
+- Models: the ASR engine loads from a local model directory at runtime
+  (`Transcriber::from_model_dir`). Model files are optional downloads and are
+  never fetched automatically — consistent with offline-first (spec §3.1) and
+  the no-automatic-asset-fetching rule (spec §16). Tests that need a model
+  skip unless `TPT_VOICE_MODEL_DIR` is set.
 
 To be documented in Phase 1: background job model via `tpt-av-asset` (spec
 §25 step 12), failure isolation boundaries (spec §25 step 24), and the

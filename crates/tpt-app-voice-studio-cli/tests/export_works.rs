@@ -202,7 +202,7 @@ fn audio_format_reports_the_missing_codec_engine() {
 }
 
 #[test]
-fn transcribe_reports_the_missing_speech_engine() {
+fn transcribe_without_model_dir_is_a_configuration_error() {
     let dir = temp_dir("transcribe");
     let input = dir.join("episode.wav");
     std::fs::write(&input, b"not really audio").expect("write input");
@@ -216,10 +216,62 @@ fn transcribe_reports_the_missing_speech_engine() {
         "--output",
         output.to_str().expect("utf-8"),
     ]);
-    assert_eq!(code, 2, "exit code must be TRANSCRIPTION_FAILED");
+    assert_eq!(code, 5, "missing --model-dir must be CONFIGURATION_ERROR");
     let result: serde_json::Value = serde_json::from_str(stdout.trim()).expect("json result");
     assert_eq!(result["status"], "error");
+    assert_eq!(result["code"], 5);
+    assert!(result["message"]
+        .as_str()
+        .expect("message")
+        .contains("--model-dir"));
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn transcribe_with_unloadable_model_is_a_transcription_failure() {
+    let dir = temp_dir("badmodel");
+    let input = dir.join("episode.wav");
+    std::fs::write(&input, b"not really audio").expect("write input");
+    let output = dir.join("episode.json");
+    let model_dir = dir.join("no-such-model");
+
+    let (code, stdout) = run_cli(&[
+        "--json",
+        "transcribe",
+        "--input",
+        input.to_str().expect("utf-8"),
+        "--output",
+        output.to_str().expect("utf-8"),
+        "--model-dir",
+        model_dir.to_str().expect("utf-8"),
+    ]);
+    assert_eq!(code, 2, "unloadable model must be TRANSCRIPTION_FAILED");
+    let result: serde_json::Value = serde_json::from_str(stdout.trim()).expect("json result");
     assert_eq!(result["code"], 2);
+
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn batch_transcribe_reports_missing_input_directory() {
+    let dir = temp_dir("batch");
+    let missing = dir.join("no-recordings");
+    let output = dir.join("transcripts");
+
+    let (code, stdout) = run_cli(&[
+        "--json",
+        "batch-transcribe",
+        "--input",
+        missing.to_str().expect("utf-8"),
+        "--output",
+        output.to_str().expect("utf-8"),
+        "--model-dir",
+        dir.to_str().expect("utf-8"),
+    ]);
+    assert_eq!(code, 6, "missing input dir must be INPUT_ERROR");
+    let result: serde_json::Value = serde_json::from_str(stdout.trim()).expect("json result");
+    assert_eq!(result["code"], 6);
 
     std::fs::remove_dir_all(&dir).ok();
 }

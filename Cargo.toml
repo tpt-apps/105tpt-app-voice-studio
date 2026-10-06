@@ -53,6 +53,7 @@ tpt-app-voice-studio-test = { path = "crates/tpt-app-voice-studio-test", version
 
 # --- Third-party (crates.io) ---
 thiserror = "2"
+serde_json = "1"
 
 # --- TPT foundation crates (sibling workspaces, path-wired) ---
 # Verified present 2026-10-07. Entries are wired here but not yet referenced by

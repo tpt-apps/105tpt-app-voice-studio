@@ -9,6 +9,7 @@ repository.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+serde_json.workspace = true
 tpt-app-voice-studio-core.workspace = true
 tpt-app-voice-studio-model.workspace = true
 tpt-app-voice-studio-edit.workspace = true

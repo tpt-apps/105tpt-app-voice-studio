@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Reviewable cleanup detection (`tpt-app-voice-studio-edit::detect`,
+  spec §8.1, §25 step 8): filler-word detection against configurable
+  per-language lists (conservative English default, multi-word phrases,
+  punctuation/case-insensitive) and long-silence detection from word gaps
+  with configurable threshold and retained gap. Suggestions convert
+  one-to-one into EDL operations and are never applied automatically
+  (spec §3.5).
+- Subtitle export (`tpt-app-voice-studio-export::subtitles`): SRT/VTT cue
+  packing from the rendered output timeline with configurable duration and
+  line limits, optional speaker labels (spec §11).
+- Transcript export (`...::transcript`): plain-text, timestamped
+  speaker-labeled (spec §11 example layout), and machine-readable JSON
+  formats, all positioned on the rendered timeline so exports stay in sync
+  with the edited audio, with the spec §17.3 formal-use disclaimer on
+  opt-in (unverified/reviewed modes).
+- Clip selection (`...::clip`): computes the exact source ranges a renderer
+  must cut for any rendered-time selection over the edited transcript — the
+  cutting instruction for clip/highlight export (audio render pending the
+  codec integration).
 - Core primitives (`tpt-app-voice-studio-core`): strongly typed ids
   (`ProjectId`, `RecordingId`, `SegmentId`, `SpeakerId`, `ExportJobId`),
   half-open `TimeRange` with validated geometry helpers, `Confidence` with

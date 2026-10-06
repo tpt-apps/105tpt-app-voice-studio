@@ -65,7 +65,8 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
   - Engine-level: `tpt-app-voice-studio-edit::EditSession` (validate/apply/undo/redo via history replay) plus the rendered-timeline mapping (`edit::timeline`) used by playback/export. UI surfaces are separate items below.
 - [ ] Implement trim leading/trailing silence operation — spec §8
 - [ ] Implement mute-range-without-deleting operation (redactions) — spec §8
-- [ ] Implement filler-word and silence detection (configurable per language) with manual review — spec §25 step 8, §8.1
+- [x] Implement filler-word and silence detection (configurable per language) with manual review — spec §25 step 8, §8.1
+  - `edit::detect`: per-language filler lists (conservative English default, user-extensible; multi-word phrases, punctuation/case-insensitive) and word-gap silence detection with configurable threshold and retained gap. Both emit suggestions that convert one-to-one into EDL operations — nothing is applied automatically (spec §3.5). Audio-true silence analysis (breaths/room tone) refines this when `tpt-dsp` lands.
 - [ ] Implement multi-take detection/selection — spec §25 step 9, §8.2
 
 ### Speaker & Multi-Track Handling
@@ -87,9 +88,10 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 ### Export
 - [ ] Audio export (WAV/MP3/AAC/FLAC) rendered from the EDL — spec §25 step 13, §11
 - [ ] Clip/highlight export from selected transcript ranges — spec §11
-- [ ] SRT/VTT subtitle export from aligned, edited transcript — spec §11
-- [ ] Timestamped, speaker-labeled transcript export — spec §11
-- [ ] Optional legal/formal-use disclaimer on transcript export — spec §17.3
+  - Engine selection done: `export::select_clip` computes the exact source ranges a renderer must cut for any rendered-time selection, tracking the edited transcript. Remaining: producing the audio file via `tpt-cadence` (blocked on the foundation-distribution decision).
+- [x] SRT/VTT subtitle export from aligned, edited transcript — spec §11
+- [x] Timestamped, speaker-labeled transcript export — spec §11
+- [x] Optional legal/formal-use disclaimer on transcript export — spec §17.3
 
 ### CLI
 - [ ] Implement CLI: `transcribe`, `batch-transcribe`, `export` — spec §25 step 14, §13

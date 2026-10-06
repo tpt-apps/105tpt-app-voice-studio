@@ -1,27 +1,29 @@
 //! Export pipeline for TPT Voice Studio.
 //!
 //! Renders deliverables from the edit-decision-list and the aligned, edited
-//! transcript (spec §11):
+//! transcript (spec §11). All text-timeline exports are positioned on the
+//! *rendered* output timeline (`tpt-app-voice-studio-edit::timeline`), so
+//! subtitles and transcripts stay in sync with the final edited audio
+//! without a manual re-timing pass.
 //!
-//! - Audio export (WAV, MP3, AAC, FLAC via `tpt-cadence`) rendered from the
-//!   EDL, so exports always match the edited project.
-//! - Clip/highlight export from selected transcript ranges.
-//! - SRT/VTT subtitle generation derived from the same aligned data used for
-//!   editing — subtitles stay in sync with the final edited audio without a
-//!   manual re-timing pass.
-//! - Timestamped, speaker-labeled transcript export suitable for client
-//!   delivery or legal/corporate record-keeping, with the optional formal-use
-//!   disclaimer on opt-in (spec §17.3).
+//! - Subtitles/captions: SRT/VTT cue generation ([`subtitles`]).
+//! - Transcript delivery: plain text, timestamped/speaker-labeled, and
+//!   machine-readable JSON ([`transcript`]), with the formal-use disclaimer
+//!   on opt-in (spec §17.3).
+//! - Clips/highlights: selecting the exact source ranges a renderer must cut
+//!   for a rendered-time selection ([`clip`]).
 //!
-//! The same export engine backs both the desktop export panel and the CLI
-//! `export` command (spec §12.5, §13).
+//! Audio export (WAV/MP3/AAC/FLAC) renders these same selections through the
+//! codec foundation (`tpt-cadence`) and lands with the Phase 1 codec
+//! integration; its selection logic is already defined here.
 
-#[cfg(test)]
-mod tests {
-    /// Placeholder so `cargo test` exercises the crate before real modules
-    /// land in Phase 1. Remove once the crate has genuine coverage.
-    #[test]
-    fn crate_links() {
-        assert_eq!(1 + 1, 2);
-    }
-}
+pub mod clip;
+pub mod subtitles;
+pub mod transcript;
+
+pub use clip::{select_clip, ClipSelection, ClipWord};
+pub use subtitles::{build_cues, render_subtitles, SubtitleCue, SubtitleOptions};
+pub use transcript::{
+    render_transcript, DisclaimerMode, TranscriptExportOptions, REVIEWED_NOTE,
+    TRANSCRIPT_DISCLAIMER,
+};

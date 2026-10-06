@@ -37,11 +37,19 @@ words/sentences; reorder segments; trim leading/trailing silence; mute a
 range without deleting it (redactions); select between alternate takes of the
 same line.
 
-## Review-first cleanup (spec §3.5, §8.1)
+## Review-first cleanup detection (spec §3.5, §8.1)
 
 Filler words, long silences, and breaths are detected and offered as
 suggestions in a review panel (accept individually, accept all, ignore) —
 never silently removed. Filler lists are configurable per language.
+
+Implemented in `edit::detect`: filler detection matches a configurable
+per-language list (longest-match-first, punctuation/case-insensitive; the
+English default is deliberately conservative) and silence detection reports
+word gaps above a configurable threshold with a retained-gap padding rule.
+Every suggestion (`FillerSuggestion`, `SilenceSuggestion`) converts directly
+into its `EditOperation`, so accepting a suggestion is an ordinary,
+undoable EDL edit.
 
 ## Multi-take selection (spec §8.2)
 

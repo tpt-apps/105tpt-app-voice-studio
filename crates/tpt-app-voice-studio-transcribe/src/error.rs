@@ -19,6 +19,11 @@ pub enum TranscribeError {
     /// The recording contained no usable audio.
     #[error("recording contains no audio samples")]
     EmptyAudio,
+    /// The file parsed, but its audio data cannot be used safely (for example
+    /// a zero sample rate or non-finite float samples). Rejected up front so
+    /// bad values never reach the speech engine (spec §16).
+    #[error("invalid audio data: {0}")]
+    InvalidAudio(String),
 }
 
 #[cfg(test)]

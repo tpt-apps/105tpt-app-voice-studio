@@ -69,8 +69,12 @@ tpt-voice = { git = "https://github.com/tpt-solutions/tpt-voice", branch = "mast
 # Codecs (spec §5.1: import/export of WAV, MP3, AAC, FLAC)
 tpt-av-cadence-core = { git = "https://github.com/tpt-solutions/tpt-cadence", branch = "master" }
 tpt-av-cadence-wav = { git = "https://github.com/tpt-solutions/tpt-cadence", branch = "master" }
+# Import decoders for MP3, AAC (ADTS), and FLAC.
+tpt-av-cadence-mp3 = { git = "https://github.com/tpt-solutions/tpt-cadence", branch = "master" }
+tpt-av-cadence-aac = { git = "https://github.com/tpt-solutions/tpt-cadence", branch = "master" }
+tpt-av-cadence-flac = { git = "https://github.com/tpt-solutions/tpt-cadence", branch = "master" }
 # Not yet consumed (wire when their integration lands):
-#   tpt-av-cadence-{mp3,aac,flac}   — audio encode/export
+#   tpt-av-cadence-*                — audio encode/export (encoders exist in mp3/flac)
 #   tpt-av-audio*                   — signal engine (cleanup, render)
 #   tpt-av-asset*                   — library store / background jobs
 #   tpt-av-test*                    — golden fixtures / fuzz harnesses

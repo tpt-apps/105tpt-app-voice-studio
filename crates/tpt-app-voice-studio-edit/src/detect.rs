@@ -5,12 +5,14 @@
 //! - filler words ([`fillers`]), matched against a configurable per-language
 //!   list,
 //! - long silences ([`silence`]), detected as gaps between transcribed words
-//!   on each recording's timeline.
+//!   on each recording's timeline,
+//! - alternate takes of the same line across recordings ([`takes`], spec §8.2).
 //!
-//! Both detectors return *suggestions* that convert one-to-one into
+//! All detectors return *suggestions* that convert one-to-one into
 //! [`EditOperation`]s, so a review panel's "Remove"/"Trim" action is an
 //! ordinary, undoable edit against the EDL — the engine never applies them
 //! on its own.
 
 pub mod fillers;
 pub mod silence;
+pub mod takes;

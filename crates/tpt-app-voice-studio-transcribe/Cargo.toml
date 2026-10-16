@@ -15,6 +15,9 @@ tpt-app-voice-studio-model.workspace = true
 tpt-voice.workspace = true
 tpt-av-cadence-core.workspace = true
 tpt-av-cadence-wav.workspace = true
+tpt-av-cadence-mp3.workspace = true
+tpt-av-cadence-aac.workspace = true
+tpt-av-cadence-flac.workspace = true
 
 [lints]
 workspace = true

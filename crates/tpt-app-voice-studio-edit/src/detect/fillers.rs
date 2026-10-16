@@ -66,10 +66,7 @@ impl FillerList {
     /// filler.
     #[must_use]
     pub fn contains(&self, phrase: &str) -> bool {
-        let words: Vec<String> = phrase
-            .split_whitespace()
-            .map(normalize_token)
-            .collect();
+        let words: Vec<String> = phrase.split_whitespace().map(normalize_token).collect();
         self.entries.contains(&words.join(" "))
     }
 
@@ -149,10 +146,15 @@ pub fn detect_fillers(transcript: &Transcript, fillers: &FillerList) -> Vec<Fill
 
 /// Lowercases and strips leading/trailing punctuation, keeping interior
 /// characters (so `mm-hmm` stays intact).
+/// Strips surrounding punctuation and case-folds the token. Unicode-aware, so
+/// non-ASCII fillers such as "Ähm" match, and symbols such as "—" normalise to
+/// an empty token that never matches.
 fn normalize_token(token: &str) -> String {
     token
-        .trim_matches(|c: char| c.is_ascii_punctuation())
-        .to_ascii_lowercase()
+        .trim_matches(|c: char| !c.is_alphanumeric())
+        .chars()
+        .flat_map(char::to_lowercase)
+        .collect()
 }
 
 #[cfg(test)]

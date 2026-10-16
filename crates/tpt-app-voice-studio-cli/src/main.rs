@@ -3,8 +3,8 @@
 //! A first-class automation interface for studio-scale batch processing
 //! (spec §13):
 //!
-//! - `transcribe` — transcribe a single WAV recording to a JSON transcript.
-//! - `batch-transcribe` — transcribe every WAV in a directory.
+//! - `transcribe` — transcribe a single audio recording (WAV/MP3/AAC/FLAC) to a JSON transcript.
+//! - `batch-transcribe` — transcribe every supported audio file in a directory.
 //! - `export` — render SRT/VTT subtitles or a transcript (text/JSON) from a
 //!   `.tptproj` project file; audio formats arrive with the codec
 //!   integration.
@@ -43,7 +43,7 @@ use tpt_app_voice_studio_export::{
 use tpt_app_voice_studio_model::export::{SubtitleFormat, TranscriptFormat};
 use tpt_app_voice_studio_model::ProjectFile;
 use tpt_app_voice_studio_transcribe::{
-    decode_wav_file, TptVoiceEngine, TranscriptionEngine, TranscriptionOutput,
+    decode_file, TptVoiceEngine, TranscriptionEngine, TranscriptionOutput,
 };
 
 /// Stable CLI exit codes (spec §13). Public so the desktop shell and tests
@@ -84,9 +84,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Transcribe a single WAV recording (requires --model-dir).
+    /// Transcribe a single audio recording (requires --model-dir).
     Transcribe {
-        /// Recording to transcribe (WAV).
+        /// Recording to transcribe (WAV, MP3, AAC, or FLAC; detected from content).
         #[arg(long)]
         input: PathBuf,
         /// Transcript output path (JSON).
@@ -97,9 +97,9 @@ enum Commands {
         #[arg(long)]
         model_dir: Option<PathBuf>,
     },
-    /// Transcribe every WAV in a directory (requires --model-dir).
+    /// Transcribe every supported audio file in a directory (requires --model-dir).
     BatchTranscribe {
-        /// Directory of WAV recordings.
+        /// Directory of audio recordings.
         #[arg(long)]
         input: PathBuf,
         /// Directory for JSON transcript output (created if missing).
@@ -238,21 +238,65 @@ fn build_engine(model_dir: Option<&Path>) -> Result<TptVoiceEngine, Failure> {
     })
 }
 
-/// Transcribes one WAV file and writes a JSON transcript.
+/// Resolves a path for identity comparison. Uses the canonical form when the
+/// file exists; otherwise canonicalises the parent directory so a not-yet
+/// written output still compares correctly.
+fn comparable_path(path: &Path) -> PathBuf {
+    if let Ok(canonical) = path.canonicalize() {
+        return canonical;
+    }
+    let parent = path
+        .parent()
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    match (parent.canonicalize(), path.file_name()) {
+        (Ok(dir), Some(name)) => dir.join(name),
+        _ => path.to_path_buf(),
+    }
+}
+
+/// Refuses an output path that is the input recording itself, so a transcript
+/// can never overwrite the source audio (spec §16).
+fn reject_output_over_input(input: &Path, output: &Path) -> Result<(), Failure> {
+    if comparable_path(input) == comparable_path(output) {
+        return Err(Failure::new(
+            exit_code::INPUT_ERROR,
+            format!(
+                "output {} would overwrite the input recording; choose a different output path",
+                output.display()
+            ),
+        ));
+    }
+    Ok(())
+}
+
+/// Transcribes one audio file and writes a JSON transcript.
+/// Per-file result of a transcription run.
+struct TranscribeSummary {
+    words: usize,
+    average_confidence: f32,
+    /// Words the alignment check had to repair (spec §7). Zero for a clean run.
+    timing_repairs: usize,
+}
+
 fn transcribe_file(
     engine: &mut dyn TranscriptionEngine,
     input: &Path,
     output: &Path,
-) -> Result<(usize, f32), Failure> {
+) -> Result<TranscribeSummary, Failure> {
+    reject_output_over_input(input, output)?;
     let audio =
-        decode_wav_file(input).map_err(|e| Failure::new(exit_code::INPUT_ERROR, e.to_string()))?;
+        decode_file(input).map_err(|e| Failure::new(exit_code::INPUT_ERROR, e.to_string()))?;
     let TranscriptionOutput {
-        transcript,
+        mut transcript,
         speakers,
     } = engine
         .transcribe(&audio.samples, audio.sample_rate, RecordingId::new(1))
         .map_err(|e| Failure::new(exit_code::TRANSCRIPTION_FAILED, e.to_string()))?;
 
+    let timing_repairs =
+        tpt_app_voice_studio_align::normalize_timing(&mut transcript, audio.duration)
+            .adjusted_words;
     let words = transcript.word_count();
     let average_confidence = transcript.average_confidence().unwrap_or(0.0);
     let options = TranscriptExportOptions {
@@ -263,14 +307,22 @@ fn transcribe_file(
     let json_text = render_transcript(&transcript, &speakers, &options);
     std::fs::write(output, json_text)
         .map_err(|e| Failure::new(exit_code::EXPORT_FAILED, format!("write failed: {e}")))?;
-    Ok((words, average_confidence))
+    Ok(TranscribeSummary {
+        words,
+        average_confidence,
+        timing_repairs,
+    })
 }
 
 fn run_transcribe(input: &Path, output: &Path, model_dir: Option<&Path>, json: bool) -> u8 {
     let outcome =
         build_engine(model_dir).and_then(|mut engine| transcribe_file(&mut engine, input, output));
     match outcome {
-        Ok((words, average_confidence)) => {
+        Ok(TranscribeSummary {
+            words,
+            average_confidence,
+            timing_repairs,
+        }) => {
             let result = serde_json::json!({
                 "status": "success",
                 "command": "transcribe",
@@ -278,6 +330,7 @@ fn run_transcribe(input: &Path, output: &Path, model_dir: Option<&Path>, json: b
                 "output": output.display().to_string(),
                 "words_transcribed": words,
                 "average_confidence": average_confidence,
+                "timing_repairs": timing_repairs,
             });
             print_success(
                 json,
@@ -297,8 +350,12 @@ fn run_transcribe(input: &Path, output: &Path, model_dir: Option<&Path>, json: b
     }
 }
 
-/// Lists the WAV recordings in `input_dir`, sorted by path.
-fn list_wav_files(input_dir: &Path) -> Result<Vec<PathBuf>, Failure> {
+/// File extensions the batch command picks up. Format is still detected from
+/// content when decoding, so this only controls which files are considered.
+const IMPORT_EXTENSIONS: &[&str] = &["wav", "mp3", "aac", "flac"];
+
+/// Lists the supported audio recordings in `input_dir`, sorted by path.
+fn list_audio_files(input_dir: &Path) -> Result<Vec<PathBuf>, Failure> {
     if !input_dir.is_dir() {
         return Err(Failure::new(
             exit_code::INPUT_ERROR,
@@ -311,15 +368,18 @@ fn list_wav_files(input_dir: &Path) -> Result<Vec<PathBuf>, Failure> {
         .map(|entry| entry.path())
         .filter(|p| {
             p.is_file()
-                && p.extension()
-                    .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
+                && p.extension().is_some_and(|ext| {
+                    IMPORT_EXTENSIONS
+                        .iter()
+                        .any(|known| ext.eq_ignore_ascii_case(known))
+                })
         })
         .collect();
     paths.sort();
     if paths.is_empty() {
         return Err(Failure::new(
             exit_code::INPUT_ERROR,
-            format!("no WAV files found in {}", input_dir.display()),
+            format!("no supported audio files found in {}", input_dir.display()),
         ));
     }
     Ok(paths)
@@ -347,7 +407,11 @@ fn transcribe_batch_files(
         let stem = transcript_stem(input);
         let output = output_dir.join(format!("{stem}.json"));
         match transcribe_file(engine, input, &output) {
-            Ok((words, average_confidence)) => {
+            Ok(TranscribeSummary {
+                words,
+                average_confidence,
+                timing_repairs,
+            }) => {
                 succeeded += 1;
                 if !json {
                     println!(
@@ -361,6 +425,7 @@ fn transcribe_batch_files(
                     "status": "success",
                     "words_transcribed": words,
                     "average_confidence": average_confidence,
+                    "timing_repairs": timing_repairs,
                 }));
             }
             Err(failure) => {
@@ -406,7 +471,7 @@ fn run_batch(input_dir: &Path, output_dir: &Path, model_dir: Option<&Path>, json
         }
     };
 
-    let files = match list_wav_files(input_dir) {
+    let files = match list_audio_files(input_dir) {
         Ok(files) => files,
         Err(failure) => {
             print_failure(json, "batch-transcribe", &failure);
@@ -586,4 +651,39 @@ fn render_export(
         format_name,
         words,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn output_equal_to_input_is_rejected() {
+        let dir = std::env::temp_dir().join(format!("tvs-cli-guard-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let input = dir.join("take.wav");
+        std::fs::write(&input, b"audio").expect("write input");
+
+        let err = reject_output_over_input(&input, &input).expect_err("same file");
+        assert_eq!(err.code, exit_code::INPUT_ERROR);
+
+        // A differently spelled path to the same file is still the same file.
+        let respelled = dir.join(".").join("take.wav");
+        assert!(reject_output_over_input(&input, &respelled).is_err());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn distinct_output_path_is_accepted_even_before_it_exists() {
+        let dir = std::env::temp_dir().join(format!("tvs-cli-ok-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("temp dir");
+        let input = dir.join("take.wav");
+        std::fs::write(&input, b"audio").expect("write input");
+
+        let output = dir.join("take.json");
+        assert!(reject_output_over_input(&input, &output).is_ok());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
 }

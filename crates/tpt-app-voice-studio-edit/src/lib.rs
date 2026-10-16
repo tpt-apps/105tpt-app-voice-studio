@@ -32,6 +32,7 @@
 //! the audio between its neighbours, as a physical cut would. Deliberate
 //! pause preservation is the job of silence-trim configuration (spec §10).
 
+pub mod detect;
 pub mod error;
 pub mod session;
 pub mod timeline;

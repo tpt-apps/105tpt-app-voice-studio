@@ -42,10 +42,11 @@ License: dual **MIT OR Apache-2.0**.
 Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, following the recommended implementation order in spec §25.
 
 ### Ingestion & Codecs
-- [ ] Integrate `tpt-cadence`; enumerate supported import/export formats — spec §25 step 2
-  - Progress: WAV import integrated (`transcribe::decode`) through `tpt-av-cadence-core`/`-wav` as git dependencies, with the format list centralised in `SUPPORTED_IMPORT_FORMATS`. Remaining: MP3/AAC/FLAC decode (crates exist, wiring is mechanical) and encode for export.
+- [x] Integrate `tpt-cadence` for import; enumerate supported import formats — spec §25 step 2
+  - Import decode covers WAV, MP3, AAC (ADTS), and FLAC via `tpt-av-cadence-{wav,mp3,aac,flac}`. Format is detected from file content (`ImportFormat::sniff`), not the extension. The list is centralised in `SUPPORTED_IMPORT_FORMATS`. Covered by round-trip tests (FLAC and MP3 encoded in-test, AAC from `fixtures/formats/test.aac`).
+  - Remaining for export: encoding to MP3/AAC/FLAC is blocked on the audio export item below.
 - [ ] Single-file import — spec §19
-  - Progress: engine + CLI level done for WAV (`tpt-voice-studio transcribe --input x.wav --output x.json --model-dir …`). Remaining: multi-format decode and the desktop drag-and-drop path.
+  - Progress: engine + CLI level done for WAV, MP3, AAC, and FLAC (`tpt-voice-studio transcribe --input x.flac --output x.json --model-dir …`). Remaining: the desktop drag-and-drop path (see drag-and-drop item).
 - [ ] Multi-track/multi-mic session import — spec §19
 - [ ] Drag-and-drop import — spec §19
 
@@ -65,18 +66,24 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
     Real-engine runs need a local ASR model dir (`--model-dir`; `TPT_VOICE_MODEL_DIR` for
     tests) — models are optional downloads, so the app stays offline-first (spec §3.1).
 - [ ] Implement forced alignment integration and per-word confidence scoring — spec §25 step 5
+  - Progress: word alignment comes from `tpt-voice`'s `SpeechPipeline` (engine). `tpt-app-voice-studio-align::normalize_timing` checks every engine result: clamps words to the recording duration, collapses inverted spans, and removes overlaps per recording, without dropping words. The CLI reports the count as `timing_repairs`. Covered by unit tests. Remaining: verify against a real model (needs a local ASR model dir), and multi-track reconciliation (below).
 - [ ] Confidence surfacing: high/medium/low visual tiers, retained for life of project — spec §7.1
+  - Progress: `Confidence::tier()` (core) maps scores to High/Medium/Low, and each word keeps its score in the model. Remaining: the visual treatment in the transcript editor (desktop UI item).
 - [ ] Multi-track alignment reconciliation across imperfectly synchronised tracks — spec §7.2
 
 ### Non-Destructive Editing
 - [x] Implement the non-destructive edit-decision-list (EDL) model — spec §25 step 6
 - [x] Implement transcript-based delete/reorder editing against the EDL — spec §25 step 7
   - Engine-level: `tpt-app-voice-studio-edit::EditSession` (validate/apply/undo/redo via history replay) plus the rendered-timeline mapping (`edit::timeline`) used by playback/export. UI surfaces are separate items below.
-- [ ] Implement trim leading/trailing silence operation — spec §8
-- [ ] Implement mute-range-without-deleting operation (redactions) — spec §8
+- [x] Implement trim leading/trailing silence operation — spec §8
+  - `edit::detect::detect_silences` with `SilenceConfig::include_leading_trailing` emits `Trim` suggestions for quiet before the first and after the last word; `EditSession` applies them as `EditOperation::Trim`. Covered by unit tests (`detect::silence`), which were not compiled until the `detect` module was declared in `edit/src/lib.rs`; see the correction note on the filler item below.
+- [x] Implement mute-range-without-deleting operation (redactions) — spec §8
+  - `EditOperation::Mute` is validated, recorded in the EDL, leaves the transcript untouched, and is queryable via `EditSession::muted_ranges`. Audible silencing is applied at render/export time, which lands with the audio export item below.
 - [x] Implement filler-word and silence detection (configurable per language) with manual review — spec §25 step 8, §8.1
-  - `edit::detect`: per-language filler lists (conservative English default, user-extensible; multi-word phrases, punctuation/case-insensitive) and word-gap silence detection with configurable threshold and retained gap. Both emit suggestions that convert one-to-one into EDL operations — nothing is applied automatically (spec §3.5). Audio-true silence analysis (breaths/room tone) refines this when `tpt-dsp` lands.
+  - `edit::detect`: per-language filler lists (conservative English default, user-extensible; multi-word phrases, punctuation/case-insensitive) and word-gap silence detection with configurable threshold and retained gap. Both emit suggestions that convert one-to-one into EDL operations — nothing is applied automatically (spec §3.5).
+  - Correction: the `detect` module was never declared in `lib.rs`, so these detectors and their tests had not run. Wiring it in exposed a Unicode bug (ASCII-only case folding made "Ähm" miss) and two wrong test fixtures, all fixed. Tests now run and pass. Audio-true silence analysis (breaths/room tone) refines this when `tpt-dsp` lands.
 - [ ] Implement multi-take detection/selection — spec §25 step 9, §8.2
+  - Progress: `edit::detect::takes::detect_takes` finds the same line on two recordings (LCS similarity over normalised words, cross-recording pairs only) and maps a chosen take to `SelectTake`. Tested. Remaining: applying the swap to the transcript (the `SelectTake` transcript effect is still a no-op in `EditSession`) and the review UI.
 
 ### Speaker & Multi-Track Handling
 - [ ] Diarisation-driven speaker labeling with rename/merge/split — spec §9
@@ -121,19 +128,23 @@ Goal: deliver the full MVP per spec §19 and Definition of Done per spec §24, f
 - [ ] Implement export panel (format/range selection, job progress) — spec §25 step 19, §12.5
 - [ ] Implement project/asset browser (recordings, project list, job status) — spec §12.6
 - [ ] Low-confidence-only filter view for review workflow — spec §17.2
+  - Progress: engine filter `Transcript::words_in_tier(ConfidenceTier::Low)` is done and tested. Remaining: the view itself (desktop UI item).
 
 ### Local API (optional)
 - [ ] Localhost-only API, disabled by default, bound to 127.0.0.1 — spec §14
 
 ### Security & Privacy
-- [ ] Safe handling of malformed/corrupt audio files — spec §16
+- [x] Safe handling of malformed/corrupt audio files — spec §16
+  - Corrupt containers return `Codec` errors; zero sample rate and non-finite float samples are rejected as `InvalidAudio` before reaching the engine. Covered by decode tests.
 - [ ] Strict path validation and safe temporary-file handling — spec §16
+  - Progress: `transcribe` / `batch-transcribe` refuse an `--output` that resolves to the input recording (`reject_output_over_input`). No temp files are created by the CLI. Remaining: restrict paths for any future network/API surface (Local API item).
 - [ ] No automatic external asset fetching; no mandatory network access — spec §16
 
 ### Testing
 - [ ] Unit tests per pipeline stage (decode, diarisation, transcription, alignment, edit application, export): valid/invalid/boundary/malformed cases — spec §18.1
 - [ ] Golden audio/transcript test suite across fixture categories — spec §25 step 20, §18.2
 - [ ] Round-trip edit/export tests (edit → EDL → render → re-import/re-align consistency) — spec §25 step 21, §18.3
+  - Progress: `crates/tpt-app-voice-studio-cli/tests/round_trip.rs` covers edit → persist → reload → `export` through the real binary (edit reflected in output, deterministic render, lossless reload). Remaining: re-import/re-align consistency, which needs the speech engine and a model.
 - [ ] Property tests: timestamp/word-range mapping, EDL ordering/application, subtitle timing, confidence aggregation — spec §18.4
 - [ ] Fuzzing for audio/container parsers, transcript import/export parsers, project file parsing, CLI arguments — spec §25 step 22, §18.5
 - [ ] Regression fixture process: every production bug gets a permanent regression test — spec §18.6

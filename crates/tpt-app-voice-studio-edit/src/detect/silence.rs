@@ -11,8 +11,8 @@
 
 use std::time::Duration;
 
-use tpt_app_voice_studio_core::time::TimeRange;
 use tpt_app_voice_studio_core::id::RecordingId;
+use tpt_app_voice_studio_core::time::TimeRange;
 use tpt_app_voice_studio_model::edit_operation::EditOperation;
 use tpt_app_voice_studio_model::recording::Recording;
 use tpt_app_voice_studio_model::transcript::Transcript;
@@ -81,7 +81,7 @@ pub fn detect_silences(
         let mut words: Vec<_> = transcript
             .words()
             .filter(|w| w.source_recording == recording.id)
-            .map(|w| w.range())
+            .map(tpt_app_voice_studio_model::transcript::Word::range)
             .collect();
         if words.is_empty() {
             continue;
@@ -136,11 +136,11 @@ fn push_if_trimmable(
 mod tests {
     use std::time::Duration;
 
+    use std::path::PathBuf;
     use tpt_app_voice_studio_core::confidence::Confidence;
     use tpt_app_voice_studio_core::id::{RecordingId, SegmentId};
     use tpt_app_voice_studio_model::recording::{Recording, RecordingFingerprint, TrackRole};
     use tpt_app_voice_studio_model::transcript::{Segment, Transcript, Word};
-    use std::path::PathBuf;
 
     use super::*;
 
@@ -166,6 +166,17 @@ mod tests {
         }
     }
 
+    /// Like [`word`] but in milliseconds, for sub-second gap fixtures.
+    fn word_ms(recording: u64, start_ms: u64, end_ms: u64) -> Word {
+        Word {
+            text: "w".to_string(),
+            start: Duration::from_millis(start_ms),
+            end: Duration::from_millis(end_ms),
+            confidence: Confidence::new(0.9).expect("valid"),
+            source_recording: RecordingId::new(recording),
+        }
+    }
+
     fn transcript_of(words: Vec<Word>) -> Transcript {
         Transcript::from_segments(vec![Segment {
             id: SegmentId::new(1),
@@ -177,9 +188,10 @@ mod tests {
     #[test]
     fn detects_interior_leading_and_trailing_silence() {
         let transcript = transcript_of(vec![
-            word(1, 2, 3),   // leading quiet: 0-2s
-            word(1, 7, 8),   // interior gap: 3-7s
-            word(1, 9, 10),  // trailing quiet: 10-14s
+            word(1, 2, 3), // leading quiet: 0-2s
+            word(1, 7, 8), // interior gap: 3-7s
+            word(1, 9, 10), // gap 8-9s: exactly min_gap, so reported
+                           // trailing quiet: 10-14s
         ]);
         let recs = vec![recording(1, 14)];
         let suggestions = detect_silences(&transcript, &recs, &SilenceConfig::default());
@@ -188,7 +200,7 @@ mod tests {
             .iter()
             .map(|s| (s.gap.start.as_secs(), s.gap.end.as_secs()))
             .collect();
-        assert_eq!(gaps, vec![(0, 2), (3, 7), (10, 14)]);
+        assert_eq!(gaps, vec![(0, 2), (3, 7), (8, 9), (10, 14)]);
     }
 
     #[test]
@@ -203,14 +215,13 @@ mod tests {
         let suggestions = detect_silences(&transcript, &recs, &config);
         assert_eq!(suggestions.len(), 1);
         let s = &suggestions[0];
-        assert_eq!(s.gap, TimeRange::new(Duration::from_secs(1), Duration::from_secs(7)).expect("v"));
+        assert_eq!(
+            s.gap,
+            TimeRange::new(Duration::from_secs(1), Duration::from_secs(7)).expect("v")
+        );
         assert_eq!(
             s.trim,
-            TimeRange::new(
-                Duration::from_millis(1_500),
-                Duration::from_millis(6_500),
-            )
-            .expect("v")
+            TimeRange::new(Duration::from_millis(1_500), Duration::from_millis(6_500),).expect("v")
         );
         // The suggestion converts into a real trim operation.
         assert_eq!(
@@ -227,9 +238,9 @@ mod tests {
         // gap1 = 1.5s: above min_gap (1s) but below 2×retained (1.5s), so no
         // trim fits and it is left alone. gap2 = 2.5s: reported.
         let transcript = transcript_of(vec![
-            word(1, 0, 1),
-            word(1, 2_500, 3_500), // 1.5s gap before this word
-            word(1, 6_000, 7_000), // 2.5s gap before this word
+            word_ms(1, 0, 1_000),
+            word_ms(1, 2_500, 3_500), // 1.5s gap before this word
+            word_ms(1, 6_000, 7_000), // 2.5s gap before this word
         ]);
         let recs = vec![recording(1, 7)];
         let config = SilenceConfig {

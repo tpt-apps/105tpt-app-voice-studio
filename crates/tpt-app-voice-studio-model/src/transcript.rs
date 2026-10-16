@@ -9,7 +9,7 @@
 
 use std::time::Duration;
 
-use tpt_app_voice_studio_core::confidence::Confidence;
+use tpt_app_voice_studio_core::confidence::{Confidence, ConfidenceTier};
 use tpt_app_voice_studio_core::id::{RecordingId, SegmentId, SpeakerId};
 use tpt_app_voice_studio_core::time::TimeRange;
 
@@ -108,6 +108,12 @@ impl Transcript {
         self.segments.iter().flat_map(|s| s.words.iter())
     }
 
+    /// Words whose confidence falls in `tier`, in playback order. Backs the
+    /// review filter that shows only low-confidence words (spec §17.2).
+    pub fn words_in_tier(&self, tier: ConfidenceTier) -> impl Iterator<Item = &Word> {
+        self.words().filter(move |w| w.confidence.tier() == tier)
+    }
+
     /// Average confidence across all words, or `None` for an empty
     /// transcript. This feeds the CLI's `average_confidence` result field
     /// (spec §13).
@@ -150,6 +156,32 @@ impl Transcript {
 #[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn words_in_tier_filters_across_segments_in_playback_order() {
+        let transcript = Transcript::from_segments(vec![
+            Segment {
+                id: SegmentId::new(1),
+                speaker: None,
+                words: vec![word("clear", 0, 1, 0.95), word("mumbled", 1, 2, 0.3)],
+            },
+            Segment {
+                id: SegmentId::new(2),
+                speaker: None,
+                words: vec![word("unsure", 2, 3, 0.7), word("fine", 3, 4, 0.99)],
+            },
+        ]);
+        let low: Vec<&str> = transcript
+            .words_in_tier(ConfidenceTier::Low)
+            .map(|w| w.text.as_str())
+            .collect();
+        assert_eq!(low, vec!["mumbled"]);
+        let medium: Vec<&str> = transcript
+            .words_in_tier(ConfidenceTier::Medium)
+            .map(|w| w.text.as_str())
+            .collect();
+        assert_eq!(medium, vec!["unsure"]);
+    }
 
     fn word(text: &str, start_secs: u64, end_secs: u64, confidence: f32) -> Word {
         Word {

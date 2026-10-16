@@ -27,7 +27,7 @@ pub mod decode;
 pub mod engine;
 pub mod error;
 
-pub use decode::{decode_wav_file, DecodedAudio, SUPPORTED_IMPORT_FORMATS};
+pub use decode::{decode_file, DecodedAudio, SUPPORTED_IMPORT_FORMATS};
 pub use engine::{
     FakeTranscriptionEngine, TptVoiceEngine, TranscriptionEngine, TranscriptionOutput,
 };
